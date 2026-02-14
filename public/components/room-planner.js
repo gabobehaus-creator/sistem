@@ -10,33 +10,58 @@ class RoomPlanner extends HTMLElement {
 
         shadow.innerHTML = `
             <style>
-                .planner-container { overflow-x: auto; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; }
-                .planner-grid { display: grid; border-collapse: collapse; width: max-content; }
-                .cell { border: 1px solid #e0e0e0; padding: 8px 5px; text-align: center; cursor: pointer; min-height: 20px; box-sizing: border-box; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .cell:hover { background-color: #f2f2f2; }
-                .header-cell { background-color: #0056b3; color: white; font-weight: bold; position: sticky; top: 0; z-index: 10; }
-                .room-header { background-color: #f9f9f9; color: #333; text-align: left; font-weight: normal; position: sticky; left: 0; z-index: 5; }
-                .weekend-cell { background-color: #f0f0f0 !important; color: #555; }
-                .weekend-header { background-color: #004494 !important; }
-                .status-reserved { background-color: #ffeb3b; color: #333; }
-                .status-occupied { background-color: #4caf50; color: white; }
-                .status-blocked { background-color: #f44336; color: white; }
-                .status-liberated { background-color: white; }
-                 /* --- NUEVOS ESTILOS PARA EL ESTADO DE LIMPIEZA --- */
-                .clean-status-header.clean { border-left: 5px solid #4CAF50; /* Verde */ }
-                .clean-status-header.dirty { border-left: 5px solid #F44336; /* Rojo - SUCIA */ }
-                .clean-status-header.servicing { border-left: 5px solid #FF9800; /* Naranja */ }
+            .planner-container { overflow-x: auto; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; }
+            .planner-grid { display: grid; border-collapse: collapse; width: max-content; }
+            .cell { border: 1px solid #e0e0e0; padding: 8px 5px; text-align: center; cursor: pointer; min-height: 20px; box-sizing: border-box; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .cell:hover { background-color: #f2f2f2; }
+            .header-cell { background-color: #0056b3; color: white; font-weight: bold; position: sticky; top: 0; z-index: 10; }
+            .room-header { background-color: #f9f9f9; color: #333; text-align: left; font-weight: normal; position: sticky; left: 0; z-index: 5; }
+            .weekend-cell { background-color: #f0f0f0 !important; color: #555; }
+            .weekend-header { background-color: #004494 !important; }
+            .status-reserved { background-color: #ffeb3b; color: #333; }
+            .status-occupied { background-color: #4caf50; color: white; }
+            .status-checked-out { background-color: #9e9e9e; color: white; }
+            .status-blocked { background-color: #f44336; color: white; }
+            .status-liberated { background-color: white; }
+            
+            /* --- NUEVOS ESTILOS PARA EL ESTADO DE LIMPIEZA --- */
+            .clean-status-header.clean { border-left: 5px solid #4CAF50; }
+            .clean-status-header.dirty { border-left: 5px solid #F44336; }
+            .clean-status-header.servicing { border-left: 5px solid #FF9800; }
 
-                .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-                .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+            /* --- LEYENDA DE COLORES --- */
+            .legend { padding: 15px; background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0; display: flex; gap: 20px; flex-wrap: wrap; }
+            .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+            .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
+
+            .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+            .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
             </style>
             <div class="month-selector">
-                <button class="nav-button" id="prevMonth">&lt; Anterior</button>
-                <span id="currentMonthDisplay">Mes Actual</span>
-                <button class="nav-button" id="nextMonth">Siguiente &gt;</button>
+            <button class="nav-button" id="prevMonth">&lt; Anterior</button>
+            <span id="currentMonthDisplay">Mes Actual</span>
+            <button class="nav-button" id="nextMonth">Siguiente &gt;</button>
+            </div>
+            <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffeb3b;"></div>
+                <span>Reservado</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4caf50;"></div>
+                <span>Ocupado</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #9e9e9e;"></div>
+                <span>Checkout Realizado</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #f44336;"></div>
+                <span>Bloqueado</span>
+            </div>
             </div>
             <div class="planner-container">
-                <div class="planner-grid" id="plannerGrid"></div>
+            <div class="planner-grid" id="plannerGrid"></div>
             </div>
         `;
     }
@@ -154,7 +179,7 @@ class RoomPlanner extends HTMLElement {
             const end = new Date(b.end_date + 'T00:00:00Z');
             
             // Solo devolvemos la reserva si está activa (occupied o reserved)
-            const isActive = (b.status === 'occupied' || b.status === 'reserved');
+            const isActive = (b.status === 'occupied' || b.status === 'reserved' || b.status === 'checked-out');
 
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
         });
