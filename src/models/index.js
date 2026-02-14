@@ -124,6 +124,21 @@ const Client = sequelize.define('Client', {
     }
 }, { tableName: 'clients', timestamps: false });
 
+const MinibarProduct = sequelize.define('MinibarProduct', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.TEXT, allowNull: false },
+    price: { type: DataTypes.REAL, allowNull: false, defaultValue: 0.0 },
+    quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+}, { tableName: 'minibar_products', timestamps: false });
+
+const MinibarConsumption = sequelize.define('MinibarConsumption', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    booking_id: { type: DataTypes.INTEGER, allowNull: false },
+    minibar_product_id: { type: DataTypes.INTEGER, allowNull: false },
+    quantity_consumed: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    unit_price: { type: DataTypes.REAL, allowNull: false }, // Precio al momento del consumo
+    date_consumed: { type: DataTypes.TEXT, allowNull: false },
+}, { tableName: 'minibar_consumptions', timestamps: false });
 
 // --- Definición de Relaciones (Foreign Keys) ---
 Booking.belongsTo(Room, { foreignKey: 'room_id' });
@@ -150,3 +165,4 @@ module.exports = {
     Expense,
     Client
 };
+

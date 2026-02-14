@@ -763,6 +763,138 @@ router.delete('/users/:id', authorizeRoles(['admin', 'supervisor']), async (req,
     }
 });
 
+// --- Endpoints de Productos del Minibar ---
+
+// Obtener todos los productos del minibar
+router.get('/minibar/products', async (req, res) => {
+    try {
+        const products = await MinibarProduct.findAll({ order: [['name', 'ASC']] });
+        res.json({ data: products });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Crear un nuevo producto del minibar
+router.post('/minibar/products', async (req, res) => {
+    const { name, price, quantity } = req.body;
+    if (!name || typeof price !== 'number' || typeof quantity !== 'number') {
+        return res.status(400).json({ error: "Faltan campos requeridos o son inválidos." });
+    }
+    try {
+        const newProduct = await MinibarProduct.create({ name, price, quantity });
+        res.status(201).json({ message: "Producto del minibar añadido exitosamente", id: newProduct.id });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Actualizar un producto del minibar
+router.put('/minibar/products/:id', async (req, res) => {
+    const { name, price, quantity } = req.body;
+    try {
+        const [updatedRowsCount] = await MinibarProduct.update(
+            { name, price, quantity },
+            { where: { id: req.params.id } }
+        );
+        if (updatedRowsCount > 0) {
+            res.status(200).json({ message: "Producto del minibar actualizado.", changes: updatedRowsCount });
+        } else {
+            res.status(404).json({ error: "Producto no encontrado." });
+        }
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Eliminar un producto del minibar
+router.delete('/minibar/products/:id', async (req, res) => {
+    try {
+        const deletedRows = await MinibarProduct.destroy({ where: { id: req.params.id } });
+        if (deletedRows > 0) {
+            res.status(200).json({ message: "Producto del minibar eliminado.", changes: deletedRows });
+        } else {
+            res.status(404).json({ error: "Producto no encontrado." });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Endpoints de Consumos del Minibar ---
+
+// Obtener consumos del minibar para una reserva específica
+router.get('/bookings/:bookingId/minibar-consumptions', async (req, res) => {
+    const { bookingId } = req.params;
+    try {
+        const consumptions = await MinibarConsumption.findAll({
+            where: { booking_id: bookingId },
+            include: [{ model: MinibarProduct, attributes: ['id', 'name'], required: false }],
+            order: [['date_consumed', 'DESC']]
+        });
+        res.json({ data: consumptions });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Registrar un consumo del minibar
+router.post('/minibar-consumptions', async (req, res) => {
+    const { booking_id, minibar_product_id, quantity_consumed, date_consumed } = req.body;
+    if (!booking_id || !minibar_product_id || !quantity_consumed || !date_consumed) {
+        return res.status(400).json({ error: "Faltan campos requeridos." });
+    }
+    try {
+        const product = await MinibarProduct.findByPk(minibar_product_id);
+        if (!product) {
+            return res.status(404).json({ error: "Producto del minibar no encontrado." });
+        }
+        if (product.quantity < quantity_consumed) {
+            return res.status(400).json({ error: "Stock insuficiente del producto." });
+        }
+
+        const newConsumption = await MinibarConsumption.create({
+            booking_id,
+            minibar_product_id,
+            quantity_consumed,
+            unit_price: product.price,
+            date_consumed
+        });
+
+        // Actualizar cantidad disponible del producto
+        await MinibarProduct.update(
+            { quantity: product.quantity - quantity_consumed },
+            { where: { id: minibar_product_id } }
+        );
+
+        res.status(201).json({ message: "Consumo del minibar registrado exitosamente", id: newConsumption.id });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Eliminar un consumo del minibar (devuelve el stock)
+router.delete('/minibar-consumptions/:id', async (req, res) => {
+    try {
+        const consumption = await MinibarConsumption.findByPk(req.params.id);
+        if (!consumption) {
+            return res.status(404).json({ error: "Consumo no encontrado." });
+        }
+
+        const product = await MinibarProduct.findByPk(consumption.minibar_product_id);
+        if (product) {
+            await MinibarProduct.update(
+                { quantity: product.quantity + consumption.quantity_consumed },
+                { where: { id: consumption.minibar_product_id } }
+            );
+        }
+
+        await MinibarConsumption.destroy({ where: { id: req.params.id } });
+        res.status(200).json({ message: "Consumo del minibar eliminado y stock devuelto.", changes: 1 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Exporta el router para que server.js lo pueda usar
 module.exports = router;
