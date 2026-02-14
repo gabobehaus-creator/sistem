@@ -108,68 +108,6 @@ class RoomPlanner extends HTMLElement {
         this.renderGrid();
     }
 
-    renderGrid() {
-        const grid = this.shadowRoot.getElementById('plannerGrid');
-        // Limpiamos el grid antes de renderizar
-        grid.innerHTML = ''; 
-        
-        // Ajuste dinámico de columnas (asume this.daysInMonth ya calculado)
-        this.shadowRoot.querySelector('.planner-grid').style.gridTemplateColumns = `150px repeat(${this.daysInMonth}, 40px)`;
-
-        // Preparamos las clases de fin de semana para las celdas de días
-        let dayOfWeek = new Date(this.currentYear, this.currentMonthIndex, 1).getDay();
-        const dayClasses = [];
-        for (let i = 0; i < this.daysInMonth; i++) {
-            dayClasses.push((dayOfWeek === 0 || dayOfWeek === 6) ? 'weekend-cell' : '');
-            dayOfWeek = (dayOfWeek + 1) % 7; 
-        }
-
-        // --- Encabezados de Días (Fila 1) ---
-        grid.innerHTML += `<div class="cell header-cell room-header">Habitación</div>`; 
-        for (let i = 1; i <= this.daysInMonth; i++) {
-            const headerCell = document.createElement('div');
-            headerCell.classList.add('cell', 'header-cell');
-            if (dayClasses[i - 1] === 'weekend-cell') { headerCell.classList.add('weekend-header'); }
-            headerCell.textContent = i;
-            grid.appendChild(headerCell);
-        }
-      // --- Bucle de renderizado de celdas por habitación (Filas 2+) ---
-        if (this.rooms && this.rooms.length > 0) {
-            this.rooms.forEach(room => {
-                
-                // 1. Renderizar la celda de la cabecera de la habitación (sticky left)
-                const roomHeaderCell = document.createElement('div');
-                roomHeaderCell.classList.add('cell', 'room-header', 'clean-status-header', room.clean_status); // APLICAMOS EL ESTADO DE LIMPIEZA AQUI
-                roomHeaderCell.dataset.roomId = room.id;
-                roomHeaderCell.textContent = room.name;
-                grid.appendChild(roomHeaderCell);
-
-                // 2. Bucle interno para los días del mes
-                for (let i = 1; i <= this.daysInMonth; i++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell', 'status-liberated');
-                    cell.dataset.roomId = room.id; 
-                    cell.dataset.day = i;
-                    
-                    if (dayClasses[i - 1] === 'weekend-cell') { cell.classList.add('weekend-cell'); }
-
-                    const booking = this.findBookingForDay(room.id, i);
-                    if (booking) {
-                        cell.classList.remove('status-liberated'); 
-                        cell.classList.add(`status-${booking.status}`);
-                          // Aseguramos que la celda ocupada no tome el color de fondo del fin de semana
-                        if(dayClasses[i - 1] === 'weekend-cell' && booking.status !== 'liberated') { 
-                            cell.classList.remove('weekend-cell'); 
-                        }
-                        cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.status.charAt(0).toUpperCase()})`;
-                        cell.dataset.bookingId = booking.id;
-                    }
-                    // Usamos delegación de eventos, no listeners individuales aquí.
-                    grid.appendChild(cell);
-                }
-            });
-        }
-    }
      // ... dentro de RoomPlanner class ...
 
     findBookingForDay(roomId, day) {
@@ -177,13 +115,100 @@ class RoomPlanner extends HTMLElement {
         return this.bookings.find(b => {
             const start = new Date(b.start_date + 'T00:00:00Z'); 
             const end = new Date(b.end_date + 'T00:00:00Z');
-            
+           
             // Solo devolvemos la reserva si está activa (occupied o reserved)
             const isActive = (b.status === 'occupied' || b.status === 'reserved' || b.status === 'checked-out');
 
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
         });
     }
+     renderGrid() {
+                const grid = this.shadowRoot.getElementById('plannerGrid');
+                grid.innerHTML = ''; 
+                
+                this.shadowRoot.querySelector('.planner-grid').style.gridTemplateColumns = `150px repeat(${this.daysInMonth}, 40px)`;
+
+                let dayOfWeek = new Date(this.currentYear, this.currentMonthIndex, 1).getDay();
+                const dayClasses = [];
+                for (let i = 0; i < this.daysInMonth; i++) {
+                    dayClasses.push((dayOfWeek === 0 || dayOfWeek === 6) ? 'weekend-cell' : '');
+                    dayOfWeek = (dayOfWeek + 1) % 7; 
+                }
+
+                grid.innerHTML += `<div class="cell header-cell room-header">Habitación</div>`; 
+                for (let i = 1; i <= this.daysInMonth; i++) {
+                    const headerCell = document.createElement('div');
+                    headerCell.classList.add('cell', 'header-cell');
+                    if (dayClasses[i - 1] === 'weekend-cell') { headerCell.classList.add('weekend-header'); }
+                    headerCell.textContent = i;
+                    grid.appendChild(headerCell);
+                }
+
+                if (this.rooms && this.rooms.length > 0) {
+                    this.rooms.forEach(room => {
+                        const roomHeaderCell = document.createElement('div');
+                        roomHeaderCell.classList.add('cell', 'room-header', 'clean-status-header', room.clean_status);
+                        roomHeaderCell.dataset.roomId = room.id;
+                        roomHeaderCell.textContent = room.name;
+                        grid.appendChild(roomHeaderCell);
+
+                        const renderedDays = new Set();
+
+                        for (let i = 1; i <= this.daysInMonth; i++) {
+                            if (renderedDays.has(i)) continue;
+
+                            const cell = document.createElement('div');
+                            cell.classList.add('cell', 'status-liberated');
+                            cell.dataset.roomId = room.id; 
+                            cell.dataset.day = i;
+                            
+                            if (dayClasses[i - 1] === 'weekend-cell') { cell.classList.add('weekend-cell'); }
+
+                            const booking = this.findBookingForDay(room.id, i);
+                            if (booking) {
+                                const duration = this.getBookingDurationInMonth(booking, room.id, i);
+                                cell.classList.remove('status-liberated'); 
+                                cell.classList.add(`status-${booking.status}`);
+                                if(dayClasses[i - 1] === 'weekend-cell' && booking.status !== 'liberated') { 
+                                    cell.classList.remove('weekend-cell'); 
+                                }
+                                cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.status.charAt(0).toUpperCase()})`;
+                                cell.dataset.bookingId = booking.id;
+                                
+                                // Aplicar colspan de grid
+                                if (duration > 1) {
+                                    cell.style.gridColumn = `span ${duration}`;
+                                    cell.classList.add('booking-merged');
+                                }
+                                
+                                // Marcar días como renderizados
+                                for (let j = 0; j < duration; j++) {
+                                    renderedDays.add(i + j);
+                                }
+                            }
+                            grid.appendChild(cell);
+                        }
+                    });
+                }
+            }
+
+            getBookingDurationInMonth(booking, roomId, startDay) {
+                const start = new Date(booking.start_date + 'T00:00:00Z');
+                const end = new Date(booking.end_date + 'T00:00:00Z');
+                let duration = 0;
+                let day = startDay;
+
+                while (day <= this.daysInMonth) {
+                    const currentDate = new Date(Date.UTC(this.currentYear, this.currentMonthIndex, day));
+                    if (currentDate >= start && currentDate < end) {
+                        duration++;
+                        day++;
+                    } else {
+                        break;
+                    }
+                }
+                return duration;
+            }
 
     // Maneja todos los clics del grid a través de delegación
     handleGridClick(event) {
