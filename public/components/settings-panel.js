@@ -61,6 +61,7 @@ class SettingsPanel extends HTMLElement {
                         <label for="currentPassword">Contraseña Actual:</label>
                         <input type="password" id="currentPassword" required>
                     </div>
+                    
                     <div class="form-group">
                         <label for="newPassword">Nueva Contraseña:</label>
                         <input type="password" id="newPassword" required>
@@ -69,8 +70,35 @@ class SettingsPanel extends HTMLElement {
                         <label for="confirmPassword">Confirmar Nueva Contraseña:</label>
                         <input type="password" id="confirmPassword" required>
                     </div>
+                    <div class="form-group">
+                        <label>Integraciones Externas:</label>
+                        <div class="integrations-container">
+                            <div class="integration-item">
+                            <p class="integration-description">Sincronizar disponibilidad y reservas</p>
+                                <div class="integration-header">
+                                    <span class="integration-name">Booking.com</span>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="bookingToggle" class="toggle-input">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                
+                            </div>
+                            <div class="integration-item">
+                                <div class="integration-header">
+                                    <span class="integration-name">Expedia</span>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="expediaToggle" class="toggle-input">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
                     <button type="submit">Guardar Cambios</button>
                 </form>
+                
             </div>
         `;
     }
