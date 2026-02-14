@@ -64,7 +64,7 @@ router.get('/bookings', async (req, res) => {
 
 // Endpoint para crear una nueva reserva
 router.post('/bookings', async (req, res) => {
-     const { room_id, client_id, client_name, start_date, end_date, status, email, notes } = req.body; 
+     const { room_id, client_id, client_name, start_date, end_date, status, email, notes, source_channel } = req.body; 
 
     if (!room_id || !client_name || !start_date || !end_date || !status) { 
         return res.status(400).json({ error: "Faltan campos requeridos." });
@@ -97,6 +97,7 @@ router.post('/bookings', async (req, res) => {
             room_id,
             client_id: client_id || null, // Guarda NULL si no se proporciona client_id
             client_name,
+            source_channel,
             start_date,
             end_date,
             status,
@@ -127,7 +128,7 @@ router.post('/bookings', async (req, res) => {
 // Endpoint para ACTUALIZAR una reserva existente
 router.put('/bookings/:id', async (req, res) => {
     const { id } = req.params;
-    const { room_id, client_name, start_date, end_date, status, price_per_night, notes } = req.body;
+    const { room_id, client_name, start_date, end_date, status, price_per_night, notes, source_channel } = req.body;
 
     if (!room_id || !client_name || !start_date || !end_date || !status) {
         return res.status(400).json({ error: "Faltan campos requeridos." });

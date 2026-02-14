@@ -18,7 +18,7 @@ const Booking = sequelize.define('Booking', {
     
     // Mantenemos client_name para clientes individuales o el nombre del contacto
     client_name: { type: DataTypes.TEXT, allowNull: false }, 
-
+    source_channel: { type: DataTypes.TEXT, allowNull: true, defaultValue: 'booking', validate: { isIn: [['booking', 'expedia', 'whatsapp', 'walk-in', 'referidos']] } },
     // client_id ahora es OPCIONAL (allowNull: true por defecto)
     client_id: { 
         type: DataTypes.INTEGER,

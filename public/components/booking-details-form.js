@@ -47,6 +47,18 @@ class BookingDetailsForm extends HTMLElement {
                 <label for="clientName">Nombre del Ocupante/Contacto:</label>
                 <input type="text" id="clientName">
             </div>
+
+            <div class="form-group">
+                <label for="sourceChannel">Canal de Origen:</label>
+                <select id="sourceChannel">
+                    <option value="">Seleccione un canal...</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="booking">Booking</option>
+                    <option value="expedia">Expedia</option>
+                    <option value="walking-in">Walking-In</option>
+                    <option value="referidos">Referidos</option>
+                </select>
+            </div>
             
             <!-- CAMPO DE EMAIL AÑADIDO -->
             <div class="form-group">
