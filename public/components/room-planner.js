@@ -24,6 +24,11 @@ class RoomPlanner extends HTMLElement {
             .status-blocked { background-color: #f44336; color: white; }
             .status-liberated { background-color: white; }
             
+            /* --- ESTILOS PARA COLUMNA DEL DÍA DE HOY --- */
+            .today-column { background-color: #e3f2fd !important; }
+            .today-column.weekend-cell { background-color: #bbdefb !important; }
+            .today-column.header-cell { background-color: #1976d2 !important; }
+            
             /* --- NUEVOS ESTILOS PARA EL ESTADO DE LIMPIEZA --- */
             .clean-status-header.clean { border-left: 5px solid #4CAF50; }
             .clean-status-header.dirty { border-left: 5px solid #F44336; }
@@ -44,20 +49,24 @@ class RoomPlanner extends HTMLElement {
             </div>
             <div class="legend">
             <div class="legend-item">
-                <div class="legend-color" style="background-color: #ffeb3b;"></div>
-                <span>Reservado</span>
+            <div class="legend-color" style="background-color: #ffeb3b;"></div>
+            <span>Reservado</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background-color: #4caf50;"></div>
-                <span>Ocupado</span>
+            <div class="legend-color" style="background-color: #4caf50;"></div>
+            <span>Ocupado</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background-color: #9e9e9e;"></div>
-                <span>Checkout Realizado</span>
+            <div class="legend-color" style="background-color: #9e9e9e;"></div>
+            <span>Checkout Realizado</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background-color: #f44336;"></div>
-                <span>Bloqueado</span>
+            <div class="legend-color" style="background-color: #f44336;"></div>
+            <span>Bloqueado</span>
+            </div>
+            <div class="legend-item">
+            <div class="legend-color" style="background-color: #e3f2fd;"></div>
+            <span>Hoy</span>
             </div>
             </div>
             <div class="planner-container">
@@ -98,7 +107,7 @@ class RoomPlanner extends HTMLElement {
         this.currentViewDate.setMonth(this.currentViewDate.getMonth() + offset);
         this.renderView();
     }
-
+//test
     renderView() {
         this.currentYear = this.currentViewDate.getFullYear();
         this.currentMonthIndex = this.currentViewDate.getMonth();
@@ -118,7 +127,8 @@ class RoomPlanner extends HTMLElement {
            
             // Solo devolvemos la reserva si está activa (occupied o reserved)
             const isActive = (b.status === 'occupied' || b.status === 'reserved' || b.status === 'checked-out');
-
+            // Agregar esta propiedad en el constructor
+            this.today = new Date();
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
         });
     }
