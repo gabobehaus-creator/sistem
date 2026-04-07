@@ -4,7 +4,7 @@ const { Sequelize } = require('sequelize');
 // Usamos variables de entorno para la conexión en Railway/Producción
 // Si DATABASE_URL está definida (común en Railway), la usamos.
 // De lo contrario, usamos SQLite local para desarrollo si es necesario.
-const connectionString = 'postgresql://postgres:sxNEXnLazSTYxgRSJFgkaSAmVXWdwutJ@ballast.proxy.rlwy.net:58922/railway';
+const connectionString = 'postgresql://postgres:qQRueJwhHYHJhgWvMLsMNszOjdkdnKnf@hopper.proxy.rlwy.net:23613/railway';
 
 const sequelize = new Sequelize(connectionString, {
     dialect: process.env.DATABASE_URL ? 'postgres' : 'sqlite',
