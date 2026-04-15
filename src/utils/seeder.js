@@ -6,7 +6,7 @@ async function seedDatabase() {
     // Usamos { alter: true } en desarrollo para actualizar el esquema sin perder datos
     await sequelize.sync({ alter: true }); 
 
-  /*  // Seed Rooms
+    // Seed Rooms
     const roomCount = await Room.count();
     if (roomCount === 0) {
          const roomsData = [
@@ -38,11 +38,11 @@ async function seedDatabase() {
         await Room.bulkCreate(roomsData);
         console.log("Habitaciones iniciales con precios insertadas.");
     }
-*/
+
     // Seed Users
     await User.truncate(); // Limpiamos la tabla de usuarios para evitar duplicados en desarrollo
     const userCount = await User.count();
-   // if (userCount === 0) {
+    if (userCount === 0) {
         const passwordTextoPlano = 'Behaus2026';
         const hashedPassword = await bcrypt.hash(passwordTextoPlano, 10);
         await User.bulkCreate([
@@ -58,17 +58,17 @@ async function seedDatabase() {
             
         ]);
         console.log("Usuarios iniciales insertados.");
-    //}
+    }
 
     // Seed Employees
-   /* const employeeCount = await Employee.count();
+    const employeeCount = await Employee.count();
     if (employeeCount === 0) {
         await Employee.bulkCreate([
             { name: 'Juan Perez', role: 'Gerente', monthly_salary: 8000.00 },
             { name: 'Maria Garcia', role: 'Recepcionista', monthly_salary: 4500.00 }
         ]);
         console.log("Empleados iniciales insertados.");
-    }*/
+    }
    console.log("Seed function finished execution.");
 }
 
