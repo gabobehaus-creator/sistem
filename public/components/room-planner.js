@@ -132,75 +132,79 @@ class RoomPlanner extends HTMLElement {
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
         });
     }
-     renderGrid() {
-                const grid = this.shadowRoot.getElementById('plannerGrid');
-                grid.innerHTML = ''; 
-                
-                this.shadowRoot.querySelector('.planner-grid').style.gridTemplateColumns = `150px repeat(${this.daysInMonth}, 40px)`;
+    renderGrid() {
+        const grid = this.shadowRoot.getElementById('plannerGrid');
+        grid.innerHTML = ''; 
+        
+        this.shadowRoot.querySelector('.planner-grid').style.gridTemplateColumns = `150px repeat(${this.daysInMonth}, 40px)`;
 
-                let dayOfWeek = new Date(this.currentYear, this.currentMonthIndex, 1).getDay();
-                const dayClasses = [];
-                for (let i = 0; i < this.daysInMonth; i++) {
-                    dayClasses.push((dayOfWeek === 0 || dayOfWeek === 6) ? 'weekend-cell' : '');
-                    dayOfWeek = (dayOfWeek + 1) % 7; 
-                }
+        let dayOfWeek = new Date(this.currentYear, this.currentMonthIndex, 1).getDay();
+        const dayClasses = [];
+        const isCurrentMonth = this.currentYear === this.today.getFullYear() && this.currentMonthIndex === this.today.getMonth();
+        for (let i = 0; i < this.daysInMonth; i++) {
+            dayClasses.push((dayOfWeek === 0 || dayOfWeek === 6) ? 'weekend-cell' : '');
+            dayOfWeek = (dayOfWeek + 1) % 7; 
+        }
 
-                grid.innerHTML += `<div class="cell header-cell room-header">Habitación</div>`; 
+        grid.innerHTML += `<div class="cell header-cell room-header">Habitación</div>`; 
+        for (let i = 1; i <= this.daysInMonth; i++) {
+            const headerCell = document.createElement('div');
+            headerCell.classList.add('cell', 'header-cell');
+            if (dayClasses[i - 1] === 'weekend-cell') { headerCell.classList.add('weekend-header'); }
+            if (isCurrentMonth && i === this.today.getDate()) { headerCell.classList.add('today-column'); }
+            headerCell.textContent = i;
+            grid.appendChild(headerCell);
+        }
+
+        if (this.rooms && this.rooms.length > 0) {
+            this.rooms.forEach(room => {
+                const roomHeaderCell = document.createElement('div');
+                roomHeaderCell.classList.add('cell', 'room-header', 'clean-status-header', room.clean_status);
+                roomHeaderCell.dataset.roomId = room.id;
+                roomHeaderCell.textContent = room.name;
+                grid.appendChild(roomHeaderCell);
+
+                const renderedDays = new Set();
+
                 for (let i = 1; i <= this.daysInMonth; i++) {
-                    const headerCell = document.createElement('div');
-                    headerCell.classList.add('cell', 'header-cell');
-                    if (dayClasses[i - 1] === 'weekend-cell') { headerCell.classList.add('weekend-header'); }
-                    headerCell.textContent = i;
-                    grid.appendChild(headerCell);
-                }
+                    if (renderedDays.has(i)) continue;
 
-                if (this.rooms && this.rooms.length > 0) {
-                    this.rooms.forEach(room => {
-                        const roomHeaderCell = document.createElement('div');
-                        roomHeaderCell.classList.add('cell', 'room-header', 'clean-status-header', room.clean_status);
-                        roomHeaderCell.dataset.roomId = room.id;
-                        roomHeaderCell.textContent = room.name;
-                        grid.appendChild(roomHeaderCell);
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', 'status-liberated');
+                    cell.dataset.roomId = room.id; 
+                    cell.dataset.day = i;
+                    
+                    if (dayClasses[i - 1] === 'weekend-cell') { cell.classList.add('weekend-cell'); }
+                    if (isCurrentMonth && i === this.today.getDate()) { cell.classList.add('today-column'); }
 
-                        const renderedDays = new Set();
-
-                        for (let i = 1; i <= this.daysInMonth; i++) {
-                            if (renderedDays.has(i)) continue;
-
-                            const cell = document.createElement('div');
-                            cell.classList.add('cell', 'status-liberated');
-                            cell.dataset.roomId = room.id; 
-                            cell.dataset.day = i;
-                            
-                            if (dayClasses[i - 1] === 'weekend-cell') { cell.classList.add('weekend-cell'); }
-
-                            const booking = this.findBookingForDay(room.id, i);
-                            if (booking) {
-                                const duration = this.getBookingDurationInMonth(booking, room.id, i);
-                                cell.classList.remove('status-liberated'); 
-                                cell.classList.add(`status-${booking.status}`);
-                                if(dayClasses[i - 1] === 'weekend-cell' && booking.status !== 'liberated') { 
-                                    cell.classList.remove('weekend-cell'); 
-                                }
-                                cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.status.charAt(0).toUpperCase()})`;
-                                cell.dataset.bookingId = booking.id;
-                                
-                                // Aplicar colspan de grid
-                                if (duration > 1) {
-                                    cell.style.gridColumn = `span ${duration}`;
-                                    cell.classList.add('booking-merged');
-                                }
-                                
-                                // Marcar días como renderizados
-                                for (let j = 0; j < duration; j++) {
-                                    renderedDays.add(i + j);
-                                }
-                            }
-                            grid.appendChild(cell);
+                    const booking = this.findBookingForDay(room.id, i);
+                    if (booking) {
+                        const duration = this.getBookingDurationInMonth(booking, room.id, i);
+                        cell.classList.remove('status-liberated'); 
+                        cell.classList.add(`status-${booking.status}`);
+                        if(dayClasses[i - 1] === 'weekend-cell' && booking.status !== 'liberated') { 
+                            cell.classList.remove('weekend-cell'); 
                         }
-                    });
+                        cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.status.charAt(0).toUpperCase()})`;
+                        cell.dataset.bookingId = booking.id;
+                        
+                        // Aplicar colspan de grid
+                        if (duration > 1) {
+                            cell.style.gridColumn = `span ${duration}`;
+                            cell.classList.add('booking-merged');
+                        }
+                        
+                        // Marcar días como renderizados
+                        for (let j = 0; j < duration; j++) {
+                            renderedDays.add(i + j);
+                        }
+                    }
+                    grid.appendChild(cell);
                 }
-            }
+            });
+        }
+    }
+              
 
             getBookingDurationInMonth(booking, roomId, startDay) {
                 const start = new Date(booking.start_date + 'T00:00:00Z');
@@ -270,7 +274,20 @@ class RoomPlanner extends HTMLElement {
             detail: eventDetail
         }));
     }
-// ...
+
+    handleRoomHeaderClick(event) {
+        const cell = event.target;
+        if (cell.classList.contains('room-header')) {
+            const roomId = cell.dataset.roomId;
+            const roomDetails = this.rooms.find(r => r.id == roomId);
+            
+            if (roomDetails) {
+                document.dispatchEvent(new CustomEvent('open-room-details-modal', {
+                    detail: roomDetails
+                }));
+            }
+        }
+    }
 
 } 
 // Asegúrate de que customElements.define('room-planner', RoomPlanner); esté al final del archivo si no lo estaba

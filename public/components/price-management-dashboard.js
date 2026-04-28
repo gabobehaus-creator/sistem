@@ -14,7 +14,7 @@ class PriceManagementDashboard extends HTMLElement {
                 button:hover { background-color: #45a049; }
                 .message { margin-bottom: 10px; padding: 10px; border-radius: 4px; display: none; }
                 .success { background-color: #e8f5e9; color: #388e3c; }
-                .error { background-color: #ffebee; color: #d32f2f; }
+                .error { background-color: #ffebee; color: #d32f2f; } //test
             </style>
             <div class="price-container">
                 <h2>Lista de Precios Actuales</h2>
