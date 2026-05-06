@@ -4,6 +4,7 @@ class BookingModal extends HTMLElement {
         this.shadow = this.attachShadow({ mode: 'open' });
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; 
+        this.salir = "Cobrar"
 
         this.shadow.innerHTML = `
             <style>
@@ -50,7 +51,7 @@ class BookingModal extends HTMLElement {
                             <button type="button" class="btn-cancel" id="cancelButton">Cancelar</button>
                             <button type="button" class="btn-delete" id="deleteButton" style="display:none;">Cancelar Reserva (Eliminar)</button>
                             <button type="button" class="btn-checkin" id="checkInButton" style="display:none;">Realizar Check-In</button>
-                            <button type="button" class="btn-checkout" id="checkOutButton" style="display:none;">Facturar y Check-Out</button>
+                            <button type="button" class="btn-checkout" id="checkOutButton" style="display:none;">${this.salir}</button>
                             <button type="button" class="btn-save" id="saveButton">Guardar Cambios</button>
                         </div>
                     </form>
