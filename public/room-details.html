@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Precios</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="components/dashboard-menu.js" defer></script>
+    <!-- Cargamos nuestro nuevo componente de gestión de precios -->
+    <script src="components/price-management-dashboard.js" defer></script>
+</head>
+<body>
+   
+<div class="modal-overlay">
+    <div class="modal-card">
+        <header class="modal-header">
+            <div>
+                <h2>Detalles de habitación</h2>
+                <p>Resumen de camas y galería de imágenes</p>
+            </div>
+            <button class="close-modal" type="button" aria-label="Cerrar modal">×</button>
+        </header>
+
+        <section class="room-specs">
+            <article class="spec-item">
+                <div class="spec-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="28" height="28" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="8" y="20" width="48" height="24" rx="4" />
+                        <path d="M8 32h48" />
+                        <path d="M18 44v8" />
+                        <path d="M46 44v8" />
+                    </svg>
+                </div>
+                <div>
+                    <strong>Cama matrimonial</strong>
+                    <p>1 unidad</p>
+                </div>
+            </article>
+
+            <article class="spec-item">
+                <div class="spec-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="28" height="28" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="10" y="22" width="44" height="20" rx="4" />
+                        <path d="M10 32h44" />
+                        <path d="M16 42v6" />
+                        <path d="M48 42v6" />
+                    </svg>
+                </div>
+                <div>
+                    <strong>Cama simple</strong>
+                    <p>2 unidades</p>
+                </div>
+            </article>
+
+            <article class="spec-item">
+                <div class="spec-icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="28" height="28" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="16" y="28" width="32" height="14" rx="3" />
+                        <path d="M16 32h32" />
+                        <path d="M22 42v8" />
+                        <path d="M42 42v8" />
+                    </svg>
+                </div>
+                <div>
+                    <strong>Cuna</strong>
+                    <p>1 unidad</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="image-carousel">
+            <img src="https://via.placeholder.com/340x220?text=Habitaci%C3%B3n+1" alt="Imagen de habitación 1">
+            <img src="https://via.placeholder.com/340x220?text=Habitaci%C3%B3n+2" alt="Imagen de habitación 2">
+            <img src="https://via.placeholder.com/340x220?text=Habitaci%C3%B3n+3" alt="Imagen de habitación 3">
+        </section>
+    </div>
+</div>
+
+<style>
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    z-index: 50;
+}
+
+.modal-card {
+    width: min(100%, 920px);
+    background: #ffffff;
+    border-radius: 28px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+.modal-header p {
+    margin: 0.4rem 0 0;
+    color: #52525b;
+}
+
+.close-modal {
+    border: none;
+    background: #ef4444;
+    color: #ffffff;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+.room-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.spec-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: #f8fafc;
+}
+
+.spec-icon {
+    width: 3.1rem;
+    height: 3.1rem;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.spec-item strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+}
+
+.spec-item p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.image-carousel {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(280px, 1fr);
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.25rem;
+}
+
+.image-carousel img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 22px;
+    scroll-snap-align: center;
+    flex-shrink: 0;
+    border: 1px solid #e5e7eb;
+}
+</style>
+</body>
+</html>

@@ -38,7 +38,25 @@ class RoomPlanner extends HTMLElement {
             .legend { padding: 15px; background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0; display: flex; gap: 20px; flex-wrap: wrap; }
             .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
             .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
+            // In connectedCallback, after the existing event listeners, add:
+            this.shadowRoot.getElementById('plannerGrid').addEventListener('mouseenter', (event) => {
+                if (event.target.classList.contains('room-header')) {
+                    this.handleRoomHeaderHover(event);
+                }
+            });
 
+            // Add this new method to the class:
+            handleRoomHeaderHover(event) {
+                const cell = event.target;
+                const roomId = cell.dataset.roomId;
+                const roomDetails = this.rooms.find(r => r.id == roomId);
+                
+                if (roomDetails) {
+                    document.dispatchEvent(new CustomEvent('open-room-details-modal', {
+                        detail: roomDetails
+                    }));
+                }
+            }
             .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
             .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
             </style>

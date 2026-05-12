@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt');
 const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, sequelize, Client } = require('../models'); 
 const { Op } = require('sequelize'); // Operadores de Sequelize para consultas complejas
 const { sendBookingConfirmation } = require('../services/email-service'); // Importa el nuevo servicio
-
+const {BookingReservas} = require('../booking/reservas'); // Importa la clase BookingReservas
 
 // Aplicamos el middleware de autenticación a todas las rutas de este router por defecto
 router.use(authenticateMiddleware);
@@ -52,12 +52,89 @@ router.get('/rooms', async (req, res) => {
 // Endpoint para obtener todas las reservas
 router.get('/bookings', async (req, res) => {
     try {
-        const bookings = await Booking.findAll();
-        res.json({
-            message: "success",
-            data: bookings
-        });
+          const parseIcsEvent = (ics) => {
+            const parseDate = (field) => {
+                const match = ics.match(new RegExp(`${field}(?:;[^:]*)?:(\\d{8})`));
+                if (!match) return null;
+                const d = match[1];
+                return `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
+            };
+
+            return {
+                start_date: parseDate('DTSTART'),
+                end_date: parseDate('DTEND')
+            };
+        };
+        
+
+    const calendarios = await BookingReservas.obtenerTodosLosCalendarios();
+    
+    const isIterableCalendarios = calendarios && typeof calendarios[Symbol.iterator] === 'function';
+
+    if (Array.isArray(calendarios) || isIterableCalendarios) {
+        const arrayCalendarios = Array.isArray(calendarios) ? calendarios : [...calendarios];
+        const createBookingFromCalendar = async (cal) => {
+            
+            const { start_date, end_date } = parseIcsEvent(cal.ics || '');
+            if (start_date && end_date) {
+                console.log('Fechas completas:', cal);
+                const room = await Room.findOne({ where: { name: cal.codigo } });
+                console.log('room_id en calendario:', cal.room_id, 'Encontrada habitación:', room ? room.name : 'No encontrada'); // DEBUG
+                if (room) {
+                    console.log('Habitación encontrada para calendario:', cal.nombre, 'ID de habitación:', cal.room_id);
+                                        const conflictCount = await Booking.count({
+                    where: {
+                        room_id: room.id,
+                        [Op.or]: [
+                        { start_date: { [Op.between]: [start_date, end_date] } },
+                        { end_date: { [Op.between]: [start_date, end_date] } },
+                        { start_date: { [Op.lte]: start_date }, end_date: { [Op.gte]: end_date } }
+                        ]
+                    }
+                    });
+            console.log("Calendarios avanzando:"); // DEBUG
+            if (conflictCount > 0) {
+                console.log('conficto detectado para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date);
+          //  return { skipped: true, reason: 'conflict', calendar: cal };
+            }
+            console.log('Creando reserva para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date, room);
+            const newBooking = await Booking.create({
+            room_id: room.id,
+            client_id: cal.client_id || null,
+            client_name: cal.client_name || 'Reserva sincronizada',
+            source_channel: cal.source_channel || 'booking',
+            start_date,
+            end_date,
+            status: cal.status || 'reserved',
+            price_per_night: room.price,
+            email: cal.email || null,
+            notes: cal.notes || null
+            });
+
+                }
+
+            }
+console.log('creada')
+           
+        };
+
+
+        for (const cal of arrayCalendarios) {
+            await createBookingFromCalendar(cal);
+        }
+
+      
+        
+    }
+    
+    const bookings = await Booking.findAll();
+
+    res.json({
+        message: "success",
+        data: bookings
+    });
     } catch (err) {
+        console.log('error en endpoint /bookings:', err); // DEBUG
         res.status(400).json({"error": err.message});
     }
 });
