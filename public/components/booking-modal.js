@@ -73,7 +73,7 @@ class BookingModal extends HTMLElement {
                     </form>
                     <dialog id="myDialog">
                     <form method="dialog">
-                        <h3>Confirmacion de Facturacion</h3>
+                        <h3>Confirmacion de Cobro</h3>
                         <p>
                             <input type="checkbox" id="checkOption" name="checkOption">
                             <label for="checkOption">Se debe aplicar late checkout?</label>
@@ -195,9 +195,10 @@ class BookingModal extends HTMLElement {
 
     // --- Funciones de Acción ---
 
-    async handleSave() {
+    async handleSave(status = null) {
         // Obtiene TODOS los datos, incluyendo client_email, gracias a la modificación anterior de getDetails()
         const bookingData = this.shadow.getElementById('detailsForm').getDetails();
+        bookingData.status = status || bookingData.status; // Permite actualizar el estado si se pasa como argumento
         
         // Añadimos validación básica para el email si es una nueva reserva o si lo requieres siempre
         if (!bookingData.client_name || !bookingData.start_date || !bookingData.end_date ) {
@@ -254,11 +255,31 @@ class BookingModal extends HTMLElement {
                 dialog.showModal();
                 confirmBtn.onclick = () => {
                     const checkbox = this.shadow.getElementById('checkOption');
+                    let lateAdd = 0;
                     if (checkbox.checked) {
-                        this.handleSave();
-                    } else {
-                        this.handleSave()
+                        const price = this.shadow.getElementById('detailsForm').getDetails();
+                        lateAdd += (price.price_per_night / 2);
                     }   
+
+
+                    const billingPanel = this.shadow.getElementById('billingPanel');
+                    const paymentMethod = billingPanel.getPaymentMethod();
+                    const total = +billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent + lateAdd;
+
+                    if (confirm(`El total a pagar es $${total}. ¿Confirmar el cobro?`)) {
+                        // 1. Establecer el estado a checked-out en el subcomponente
+                        try {
+                            // 2. Guardar/actualizar la reserva.
+                            this.handleSave('paid'); 
+                            
+                        } catch (error) {
+                            console.error("Error durante el check-out:", error);
+                            alert("Ocurrió un error crítico durante el check-out o la facturación: " + error.message);
+                        }
+                    }
+
+
+
          }
 
     }

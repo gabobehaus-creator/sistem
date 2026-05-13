@@ -144,7 +144,8 @@ class RoomPlanner extends HTMLElement {
             const end = new Date(b.end_date + 'T00:00:00Z');
            
             // Solo devolvemos la reserva si está activa (occupied o reserved)
-            const isActive = (b.status === 'occupied' || b.status === 'reserved' || b.status === 'checked-out');
+            const isActive = (b.status === 'occupied' || b.status === 'reserved' 
+                || b.status === 'checked-out' || b.status === 'paid'); // Consideramos checked-out y blocked como "activos" para mostrar su estado en el planner
             // Agregar esta propiedad en el constructor
             this.today = new Date();
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
@@ -254,12 +255,7 @@ class RoomPlanner extends HTMLElement {
         }
     }
 
-    // Lógica de click separada que EMITE UN EVENTO
-       // ... dentro de RoomPlanner class, reemplaza handleCellClickLogic ...
-
-    // Lógica de click separada que EMITE UN EVENTO
-     // ... dentro de RoomPlanner class ...
-
+   
     // Lógica de click separada que EMITE UN EVENTO
     handleCellClickLogic(cell) {
         const day = cell.dataset.day;
