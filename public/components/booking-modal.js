@@ -4,7 +4,6 @@ class BookingModal extends HTMLElement {
         this.shadow = this.attachShadow({ mode: 'open' });
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; 
-        this.salir = "Cobrar"
         this.checkout = false;
 
         this.shadow.innerHTML = `
@@ -70,7 +69,19 @@ class BookingModal extends HTMLElement {
                             
                             <button type="button" class="btn-save" id="saveButton">Guardar Cambios</button>
                         </div>
+                        
                     </form>
+                    <dialog id="myDialog">
+                    <form method="dialog">
+                        <h3>Confirmacion de Facturacion</h3>
+                        <p>
+                            <input type="checkbox" id="checkOption" name="checkOption">
+                            <label for="checkOption">Se debe aplicar late checkout?</label>
+                        </p>
+                        <button value="cancel">Cancelar</button>
+                        <button id="confirmBtn" value="default">Aceptar</button>
+                    </form>
+                </dialog>
                 </div>
             </div>
         `;
@@ -83,11 +94,19 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('deleteButton').addEventListener('click', () => this.handleDelete());
         this.shadow.getElementById('checkInButton').addEventListener('click', () => this.handleCheckIn());
         this.shadow.getElementById('checkOutButton').addEventListener('click', () => this.handleCheckOut());
+        this.shadow.getElementById('cobrarButton').addEventListener('click', () => this.handleCobrar());
+        this.shadow.getElementById('facturarButton').addEventListener('click', () => this.handleFacturar());
         this.shadow.getElementById('saveButton').addEventListener('click', () => this.handleSave());
         
         // Escuchar eventos globales del dashboard
         document.addEventListener('open-booking-modal', (e) => this.openModal(e.detail));
         
+
+
+
+
+
+
         // Escuchar eventos de los subcomponentes
         this.shadow.getElementById('detailsForm').addEventListener('details-changed', () => this.syncDetailsToBilling());
         this.addEventListener('get-booking-id', (e) => e.detail.callback(this.currentBookingId)); // Maneja la petición de ID desde el panel de consumos
@@ -219,6 +238,54 @@ class BookingModal extends HTMLElement {
         // Obtenemos el statusSelect del subcomponente y lo actualizamos antes de guardar
         this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'occupied';
         this.handleSave();
+    }
+
+    async handleCobrar() {
+        // Aquí podrías abrir un submodal específico para el proceso de cobro o simplemente cambiar el estado a "cobrado"
+        if (!this.currentBookingId) {
+             alert("Error: No se puede cobrar una reserva inexistente.");
+             return;
+        }
+
+        if (confirm("¿Confirmar cobro de esta reserva?")) {
+            try {
+                /* const response = await fetch(`/api/bookings/${this.currentBookingId}/cobrar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (response.ok) {
+                    alert("Reserva cobrada exitosamente.");
+                    this.closeModal();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error al cobrar reserva: ${errorData.error}`);
+                } */
+               this.handleSave();
+            } catch (error) {
+                console.error("Error al cobrar reserva:", error);
+                alert("Error de conexión al cobrar la reserva.");
+            }
+        }
+    }
+
+    async handleFacturar() {
+        // Aquí podrías abrir un submodal específico para el proceso de facturación o simplemente cambiar el estado a "facturado"
+        if (!this.currentBookingId) {
+             alert("Error: No se puede facturar una reserva inexistente.");
+             return;
+        }
+            const dialog = this.shadow.getElementById('myDialog');
+            const confirmBtn = this.shadow.getElementById('confirmBtn');
+                dialog.showModal();
+                confirmBtn.onclick = () => {
+                    const checkbox = this.shadow.getElementById('checkOption');
+                    if (checkbox.checked) {
+                        console.log("Checkbox marcado: Se aplicará late checkout");
+                    } else {
+                        console.log("Checkbox no marcado: No se aplicará late checkout");
+                    }   
+                }
     }
 
     async handleCheckOut() {
