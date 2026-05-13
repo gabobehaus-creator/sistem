@@ -33,11 +33,21 @@ class BookingModal extends HTMLElement {
                 .btn-cancel { background-color: #ccc; color: black; }
                 .btn-checkin { background-color: #ff9800; color: white; }
                 .btn-checkout { background-color: #607d8b; color: white; }
+                svg { width: 10%; height: 10%; }
             </style>
             <div class="modal-overlay" id="bookingModalOverlay">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3 id="modalTitle">Detalle de Reserva</h3>
+                        
+                        <div class="bed-icons" style"width: 60%; text-align: right;">
+                         <svg viewBox="0 0 24 24" fill="gray">
+       <path d="M20 10V7c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v3c-1.1 0-2 .9-2 2v5h1.33L3 19h1l.67-2h12.67l.66 2h1l.67-2H22v-5c0-1.1-.9-2-2-2zm-2 0h-5V7h5v3zM6 7h5v3H6V7zm-2 5v3h16v-3H4z"/>
+      </svg>
+      <svg viewBox="0 0 24 24" fill="gray">
+       <path d="M19 7h-8V3H3v18h2v-4h14v4h2v-8c0-1.1-.9-2-2-2zM5 5h4v4H5V5zm14 8H5v-2h14v2z"/>
+      </svg>
+      </div>
                         <button class="close-button" id="closeModal">&times;</button>
                     </div>
                     <form id="bookingForm">
