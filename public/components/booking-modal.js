@@ -5,6 +5,7 @@ class BookingModal extends HTMLElement {
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; 
         this.salir = "Cobrar"
+        this.checkout = false;
 
         this.shadow.innerHTML = `
             <style>
@@ -33,6 +34,8 @@ class BookingModal extends HTMLElement {
                 .btn-cancel { background-color: #ccc; color: black; }
                 .btn-checkin { background-color: #ff9800; color: white; }
                 .btn-checkout { background-color: #607d8b; color: white; }
+                .btn-cobrar { background-color: #4caf50; color: white; }
+                .btn-facturar { background-color: #2196f3; color: white; }
                 svg { width: 10%; height: 10%; }
             </style>
             <div class="modal-overlay" id="bookingModalOverlay">
@@ -40,7 +43,7 @@ class BookingModal extends HTMLElement {
                     <div class="modal-header">
                         <h3 id="modalTitle">Detalle de Reserva</h3>
                         
-                        <div class="bed-icons" style"width: 60%; text-align: right;">
+                        <div class="bed-icons" style="width: 60%; text-align: right;">
                          <svg viewBox="0 0 24 24" fill="gray">
        <path d="M20 10V7c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v3c-1.1 0-2 .9-2 2v5h1.33L3 19h1l.67-2h12.67l.66 2h1l.67-2H22v-5c0-1.1-.9-2-2-2zm-2 0h-5V7h5v3zM6 7h5v3H6V7zm-2 5v3h16v-3H4z"/>
       </svg>
@@ -61,7 +64,10 @@ class BookingModal extends HTMLElement {
                             <button type="button" class="btn-cancel" id="cancelButton">Cancelar</button>
                             <button type="button" class="btn-delete" id="deleteButton" style="display:none;">Cancelar Reserva (Eliminar)</button>
                             <button type="button" class="btn-checkin" id="checkInButton" style="display:none;">Realizar Check-In</button>
-                            <button type="button" class="btn-checkout" id="checkOutButton" style="display:none;">${this.salir}</button>
+                            <button type="button" class="btn-cobrar" id="cobrarButton">Cobrar</button>
+                            <button type="button" class="btn-facturar" id="facturarButton">Facturar</button>
+                            <button type="button" class="btn-checkout" id="checkOutButton" style="display:none;">Checkout</button>
+                            
                             <button type="button" class="btn-save" id="saveButton">Guardar Cambios</button>
                         </div>
                     </form>
@@ -121,21 +127,48 @@ class BookingModal extends HTMLElement {
     }
     
     updateActionButtonVisibility(status) {
-        // ... Lógica de visibilidad de botones (simplificada) ...
-        this.shadow.getElementById('saveButton').style.display = 'inline-block';
-        this.shadow.getElementById('deleteButton').style.display = 'none';
-        this.shadow.getElementById('checkInButton').style.display = 'none';
-        this.shadow.getElementById('checkOutButton').style.display = 'none';
-        this.shadow.getElementById('billingPanel').style.display = 'none';
+        const saveButton = this.shadow.getElementById('saveButton');
+        const facturarButton = this.shadow.getElementById('facturarButton');
+        const cobrarButton = this.shadow.getElementById('cobrarButton');
+        const checkOutButton = this.shadow.getElementById('checkOutButton');
+        const deleteButton = this.shadow.getElementById('deleteButton');
+        const checkInButton = this.shadow.getElementById('checkInButton');
+        const billingPanel = this.shadow.getElementById('billingPanel');
 
-        if (this.currentBookingId) {
-            this.shadow.getElementById('deleteButton').style.display = 'inline-block';
-            if (status === 'reserved' || status === 'liberated') {
-                this.shadow.getElementById('checkInButton').style.display = 'inline-block';
-            } else if (status === 'occupied') {
-                this.shadow.getElementById('checkOutButton').style.display = 'inline-block';
-                this.shadow.getElementById('billingPanel').style.display = 'block';
-            }
+        const hasBooking = Boolean(this.currentBookingId);
+        const isReserved = status === 'reserved';
+        const isLiberated = status === 'liberated';
+        const isOccupied = status === 'occupied';
+        const isCheckedOut = status === 'checked-out';
+        const isCobrado = status === 'cobrado';
+        const isFacturado = status === 'facturado';
+
+        // Mostrar siempre el botón Guardar
+        saveButton.style.display = 'inline-block';
+
+        // Lógica condicional para los botones según el estado
+        deleteButton.style.display = hasBooking && isReserved ? 'inline-block' : 'none';
+        checkInButton.style.display = hasBooking && (isReserved || isLiberated) ? 'inline-block' : 'none';
+        cobrarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
+        facturarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
+        checkOutButton.style.display = hasBooking && (isOccupied) ? 'inline-block' : 'none';
+        billingPanel.style.display = hasBooking && (isOccupied || isCheckedOut) ? 'block' : 'none';
+
+        // Si la reserva ya está cobrada, no mostramos check-in ni check-out
+        if (isCheckedOut) {
+            checkInButton.style.display = 'none';
+            facturarButton.style.display = 'none';
+            cobrarButton.style.display = 'none';
+        }
+
+        // Si estamos creando una nueva reserva, ocultamos botones de actions que no aplican
+        if (!hasBooking) {
+            deleteButton.style.display = 'none';
+            checkInButton.style.display = 'none';
+            facturarButton.style.display = 'none';
+            checkOutButton.style.display = 'none';
+            cobrarButton.style.display = 'none';
+            billingPanel.style.display = 'none';
         }
     }
 
