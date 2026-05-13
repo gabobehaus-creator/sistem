@@ -159,7 +159,7 @@ class BookingModal extends HTMLElement {
         const isLiberated = status === 'liberated';
         const isOccupied = status === 'occupied';
         const isCheckedOut = status === 'checked-out';
-        const isCobrado = status === 'cobrado';
+        const isCobrado = status === 'paid';
         const isFacturado = status === 'facturado';
 
         // Mostrar siempre el botón Guardar
@@ -169,9 +169,11 @@ class BookingModal extends HTMLElement {
         deleteButton.style.display = hasBooking && isReserved ? 'inline-block' : 'none';
         checkInButton.style.display = hasBooking && (isReserved || isLiberated) ? 'inline-block' : 'none';
         cobrarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
+        cobrarButton.style.disabled = !isCobrado; // Solo habilitar si está ocupado
         facturarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
         checkOutButton.style.display = hasBooking && (isOccupied) ? 'inline-block' : 'none';
         billingPanel.style.display = hasBooking && (isOccupied || isCheckedOut) ? 'block' : 'none';
+
 
         // Si la reserva ya está cobrada, no mostramos check-in ni check-out
         if (isCheckedOut) {
@@ -247,26 +249,18 @@ class BookingModal extends HTMLElement {
              return;
         }
 
-        if (confirm("¿Confirmar cobro de esta reserva?")) {
-            try {
-                /* const response = await fetch(`/api/bookings/${this.currentBookingId}/cobrar`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                });
+              const dialog = this.shadow.getElementById('myDialog');
+            const confirmBtn = this.shadow.getElementById('confirmBtn');
+                dialog.showModal();
+                confirmBtn.onclick = () => {
+                    const checkbox = this.shadow.getElementById('checkOption');
+                    if (checkbox.checked) {
+                        this.handleSave();
+                    } else {
+                        this.handleSave()
+                    }   
+         }
 
-                if (response.ok) {
-                    alert("Reserva cobrada exitosamente.");
-                    this.closeModal();
-                } else {
-                    const errorData = await response.json();
-                    alert(`Error al cobrar reserva: ${errorData.error}`);
-                } */
-               this.handleSave();
-            } catch (error) {
-                console.error("Error al cobrar reserva:", error);
-                alert("Error de conexión al cobrar la reserva.");
-            }
-        }
     }
 
     async handleFacturar() {
@@ -281,11 +275,19 @@ class BookingModal extends HTMLElement {
                 confirmBtn.onclick = () => {
                     const checkbox = this.shadow.getElementById('checkOption');
                     if (checkbox.checked) {
-                        console.log("Checkbox marcado: Se aplicará late checkout");
+                        this.facturar(true);
                     } else {
-                        console.log("Checkbox no marcado: No se aplicará late checkout");
+                        this.facturar(false)
                     }   
                 }
+    }
+
+    async facturar(lateCheckout) {
+        // Aquí podrías abrir un submodal específico para el proceso de facturación o simplemente cambiar el estado a "facturado"
+        if (!this.currentBookingId) {
+             alert("Error: No se puede facturar una reserva inexistente.");
+             return;
+        }  
     }
 
     async handleCheckOut() {

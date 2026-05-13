@@ -202,6 +202,31 @@ router.post('/bookings', async (req, res) => {
     }
 });
 
+
+//endpoint para cobrar
+router.put('/bookings/:id/cobrar', async (req, res) => {
+    const { id } = req.params;
+    const { room_id, client_name, start_date, end_date, status, price_per_night, notes, source_channel } = req.body;
+    status = 'paid'; // Forzamos el estado a "paid" para este endpoint específico
+    
+    try {
+        const [updatedRowsCount] = await Booking.update(
+            { room_id, client_name, start_date, end_date, status, price_per_night, notes },
+            { where: { id: id } }
+        );
+
+        if (updatedRowsCount > 0) {
+            res.status(200).json({ message: "Reserva actualizada exitosamente", changes: updatedRowsCount });
+        } else {
+            res.status(404).json({ error: "Reserva no encontrada." });
+        }
+
+    } catch (err) {
+        res.status(400).json({"error": err.message});
+    }
+});
+
+
 // Endpoint para ACTUALIZAR una reserva existente
 router.put('/bookings/:id', async (req, res) => {
     const { id } = req.params;
