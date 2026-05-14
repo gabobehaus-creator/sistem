@@ -168,10 +168,10 @@ class BookingModal extends HTMLElement {
         // Lógica condicional para los botones según el estado
         deleteButton.style.display = hasBooking && isReserved ? 'inline-block' : 'none';
         checkInButton.style.display = hasBooking && (isReserved || isLiberated) ? 'inline-block' : 'none';
-        cobrarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
-        cobrarButton.style.disabled = !isCobrado; // Solo habilitar si está ocupado
-        facturarButton.style.display = hasBooking && isOccupied ? 'inline-block' : 'none';
-        checkOutButton.style.display = hasBooking && (isOccupied) ? 'inline-block' : 'none';
+        cobrarButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
+        cobrarButton.style.disabled = isCobrado == 'paid'; // Solo habilitar si está ocupado
+        facturarButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
+        checkOutButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
         billingPanel.style.display = hasBooking && (isOccupied || isCheckedOut) ? 'block' : 'none';
 
 
