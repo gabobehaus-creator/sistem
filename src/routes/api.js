@@ -403,7 +403,6 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
     const { bookingId } = req.params;
     const { payment_method } = req.body; 
 
-    if (!payment_method) { return res.status(400).json({ error: "Se requiere el método de pago." }); }
 
     try {
         // 1. Obtener datos de reserva Y potencialmente del cliente asociado
@@ -414,10 +413,6 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
 
         if (!booking) { return res.status(404).json({ error: "Reserva no encontrada." }); }
         
-        // Validaciones...
-        if (booking.status !== 'checked-out') {
-            return res.status(400).json({ error: "No se puede facturar una reserva que no ha completado el check-out." });
-        }
 
         // 2. Calcular totales (misma lógica que antes)
         const startDate = new Date(booking.start_date + 'T00:00:00Z');
