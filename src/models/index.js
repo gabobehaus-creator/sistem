@@ -152,6 +152,12 @@ Employee.hasMany(Shift, { foreignKey: 'employee_id' });
 Booking.belongsTo(Client, { foreignKey: 'client_id' });
 Client.hasMany(Booking, { foreignKey: 'client_id' });
 
+// Nuevas relaciones para Minibar
+MinibarConsumption.belongsTo(Booking, { foreignKey: 'booking_id' });
+Booking.hasMany(MinibarConsumption, { foreignKey: 'booking_id' });
+MinibarConsumption.belongsTo(MinibarProduct, { foreignKey: 'minibar_product_id' });
+MinibarProduct.hasMany(MinibarConsumption, { foreignKey: 'minibar_product_id' });
+
 
 module.exports = {
     sequelize,
@@ -163,6 +169,8 @@ module.exports = {
     Employee,
     Shift,
     Expense,
-    Client
+    Client,
+    MinibarProduct,         // Nuevo modelo
+    MinibarConsumption      // Nuevo modelo
 };
 

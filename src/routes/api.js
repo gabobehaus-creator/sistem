@@ -401,18 +401,15 @@ router.put('/rooms/:id/price', async (req, res) => {
 
 router.post('/invoices/generate/:bookingId', async (req, res) => {
     const { bookingId } = req.params;
-    const { payment_method } = req.body; 
-
+    const { payment_method, minibar_total } = req.body; // Recibimos el total del minibar del frontend
 
     try {
         // 1. Obtener datos de reserva Y potencialmente del cliente asociado
-        // Usamos include para traer los datos de la empresa, required: false permite que client_id sea NULL
         const booking = await Booking.findByPk(bookingId, {
-            include: [{ model: Client, required: false }] 
+            include: [{ model: Client, required: false }]
         });
 
         if (!booking) { return res.status(404).json({ error: "Reserva no encontrada." }); }
-        
 
         // 2. Calcular totales (misma lógica que antes)
         const startDate = new Date(booking.start_date + 'T00:00:00Z');
@@ -420,10 +417,18 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
         const durationDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
         const stayCost = durationDays * booking.price_per_night;
         
-        // Fetch consumos
+        // 2. Calcular totales
+        const startDate = new Date(booking.start_date + 'T00:00:00Z');
+        const endDate = new Date(booking.end_date + 'T00:00:00Z');
+        const durationDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
+        const stayCost = durationDays * booking.price_per_night;
+        
+        // Fetch consumos adicionales (no minibar)
         const consumptions = await Consumption.findAll({ where: { booking_id: bookingId } });
         const consumptionsTotal = consumptions.reduce((sum, item) => sum + item.amount, 0);
-        const totalAmount = stayCost + consumptionsTotal;
+        
+        // Sumar todos los totales
+        const totalAmount = stayCost + consumptionsTotal + (minibar_total || 0);
 
         // --- Lógica CLAVE: Determinar datos de facturación ---
         let finalClientName = booking.client_name;
@@ -447,15 +452,16 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
                 name: finalClientName,
                 cuit_cuil: finalCuitCuil,
                 invoice_type: finalInvoiceType
-            }
+            },
+            minibarConsumptionsTotal: minibar_total || 0 // Añadir total de minibar a los detalles
         });
 
-        // ... (Generar invoice number, issue date) ...
+        // Generar invoice number, issue date
         const issueDate = new Date().toISOString().split('T')[0];
         const invoiceNumber = `INV-${issueDate.replace(/-/g, '')}-${bookingId}`;
 
 
-        // 4. Insertar la factura
+        // Insertar la factura
         const newInvoice = await Invoice.create({
             booking_id: bookingId,
             invoice_number: invoiceNumber,
@@ -465,7 +471,11 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
             payment_method: payment_method
         });
         
-        // ... (Actualizar estado de limpieza, response JSON) ...
+        // Actualizar el estado de limpieza de la habitación a 'dirty' (asumiendo que es parte del proceso de facturación final)
+        await Room.update(
+            { clean_status: 'dirty' },
+            { where: { id: booking.room_id } }
+        );
 
         res.status(201).json({
             message: "Factura generada y habitación marcada como sucia.",
