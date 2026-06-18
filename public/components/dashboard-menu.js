@@ -42,6 +42,7 @@ class DashboardMenu extends HTMLElement {
                     { href: '/prices.html', label: 'Precios y Tarifas', roles: ['admin', 'supervisor'] },
                     { href: '/clients.html', label: 'Administrar Clientes', roles: ['admin', 'supervisor', 'operador'] },
                     { href: '/employees.html', label: 'Gestión Empleados', roles: ['admin', 'supervisor'] },
+                    { href: '/minibar.html', label: 'Administrar Minibar', icon: '🛒', roles: ['admin', 'supervisor', 'operador'] }, // Nueva entrada del menú
                     // ESTA OPCIÓN ES SOLO PARA ADMINS:
                     { href: '/users-abm.html', label: 'Gestión Usuarios', roles: ['admin'] },
                     { href: '/shifts-planner.html', label: 'Planificador Turnos', roles: ['admin', 'supervisor', 'operador'] },
