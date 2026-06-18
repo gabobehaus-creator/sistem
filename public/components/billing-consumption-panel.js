@@ -2,7 +2,9 @@
 class BillingConsumptionPanel extends HTMLElement {
     constructor() {
         super();
+        super();
         this.attachShadow({ mode: 'open' });
+        this.consumptionsTotal = 0; // Initialize a property to hold the sum of additional consumptions
         this.shadowRoot.innerHTML = `
             <style>
                 .billing-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
@@ -63,7 +65,7 @@ class BillingConsumptionPanel extends HTMLElement {
 
         this.shadowRoot.getElementById('stayDuration').textContent = `${durationDays} noches`;
         this.shadowRoot.getElementById('stayCost').textContent = stayCost.toFixed(2);
-        this.updateTotalAmount(this.consumptionsTotal, minibarTotal); // Incluye el total del minibar
+        this.updateTotalAmount(this.consumptionsTotal, minibarTotal); // Ensure minibarTotal is passed correctly
     }
 
     // Carga consumos existentes para la bookingId
@@ -81,7 +83,7 @@ class BillingConsumptionPanel extends HTMLElement {
     renderConsumptions(consumptions) {
         const list = this.shadowRoot.getElementById('consumptionsList');
         list.innerHTML = '';
-        let consumptionsTotal = 0;
+        this.consumptionsTotal = 0; // Reset total before re-calculating
         if (consumptions.length === 0) {
             list.innerHTML = '<p>No hay consumos registrados para esta estadía.</p>';
         } else {
@@ -93,16 +95,18 @@ class BillingConsumptionPanel extends HTMLElement {
                     <span>$${item.amount.toFixed(2)}</span>
                 `;
                 list.appendChild(div);
-                consumptionsTotal += item.amount;
+                this.consumptionsTotal += item.amount;
             });
         }
-        this.updateTotalAmount(consumptionsTotal);
+        // When consumptions are rendered, we need to inform the parent about the updated total
+        this.updateTotalAmount(this.consumptionsTotal); // Update local total display
+        this.dispatchEvent(new CustomEvent('consumptions-total-updated', { bubbles: true, composed: true })); // Notify parent
     }
 
     updateTotalAmount(consumptionsTotal = 0, minibarTotal = 0) {
          const stayCostText = this.shadowRoot.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
          const stayCost = parseFloat(stayCostText);
-         const total = stayCost + consumptionsTotal + minibarTotal; // Sumamos el total del minibar
+         const total = stayCost + consumptionsTotal + minibarTotal;
          this.shadowRoot.getElementById('totalAmountDisplay').textContent = total.toFixed(2);
     }
 
@@ -137,6 +141,10 @@ class BillingConsumptionPanel extends HTMLElement {
     // Método para obtener el método de pago seleccionado
     getPaymentMethod() {
         return this.shadowRoot.getElementById('paymentMethodSelect').value;
+    }
+
+    getTotalConsumptions() {
+        return this.consumptionsTotal;
     }
 }
 customElements.define('billing-consumption-panel', BillingConsumptionPanel);

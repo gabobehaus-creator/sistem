@@ -51,25 +51,11 @@ class RoomPlanner extends HTMLElement {
             .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
             .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
 
-            /* In connectedCallback, after the existing event listeners, add:
-            this.shadowRoot.getElementById('plannerGrid').addEventListener('mouseenter', (event) => {
-                if (event.target.classList.contains('room-header')) {
-                    this.handleRoomHeaderHover(event);
-                }
-            });
-
-            // Add this new method to the class:
-            handleRoomHeaderHover(event) {
-                const cell = event.target;
-                const roomId = cell.dataset.roomId;
-                const roomDetails = this.rooms.find(r => r.id == roomId);
-                
-                if (roomDetails) {
-                    document.dispatchEvent(new CustomEvent('open-room-details-modal', {
-                        detail: roomDetails
-                    }));
-                }
-            } */ /* Este bloque ya existe en el código, lo dejaré comentado para no duplicar */
+            /*
+            This block contains a commented-out section for `handleRoomHeaderHover`.
+            The request is to enable this functionality. The following changes
+            will move this logic out of comments and integrate it properly.
+            */
             .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
             .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
             </style>
@@ -114,6 +100,8 @@ class RoomPlanner extends HTMLElement {
         document.addEventListener('booking-saved', () => this.refreshPlanner());
         this.shadowRoot.getElementById('prevMonth').addEventListener('click', () => this.navigateMonth(-1));
         this.shadowRoot.getElementById('nextMonth').addEventListener('click', () => this.navigateMonth(1));
+        // Add event listener for room header clicks
+        this.shadowRoot.getElementById('plannerGrid').addEventListener('click', (event) => this.handleRoomHeaderClick(event));
     }
 
     async fetchData() {
@@ -316,7 +304,19 @@ class RoomPlanner extends HTMLElement {
         }
     }
 
+    handleRoomHeaderClick(event) {
+        const cell = event.target;
+        if (cell.classList.contains('room-header')) {
+            const roomId = cell.dataset.roomId;
+            const roomDetails = this.rooms.find(r => r.id == roomId);
+            
+            if (roomDetails) {
+                document.dispatchEvent(new CustomEvent('open-room-details-modal', {
+                    detail: roomDetails
+                }));
+            }
+        }
+    }
 } 
-// Asegúrate de que customElements.define('room-planner', RoomPlanner); esté al final del archivo si no lo estaba
 customElements.define('room-planner', RoomPlanner);
 
