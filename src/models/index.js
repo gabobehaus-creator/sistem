@@ -29,12 +29,20 @@ const Booking = sequelize.define('Booking', {
         }
     },
 
-    start_date: { type: DataTypes.TEXT, allowNull: false }, 
+    start_date: { type: DataTypes.TEXT, allowNull: false },
     end_date: { type: DataTypes.TEXT, allowNull: false },
     status: { type: DataTypes.TEXT, allowNull: false },
     price_per_night: { type: DataTypes.REAL, allowNull: false, defaultValue: 0.0 },
     email: { type: DataTypes.TEXT, allowNull: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
+    time_slot: { // Nuevo campo para la franja horaria
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: 'full-day', // Por defecto, una reserva ocupa todo el día
+        validate: {
+            isIn: [['full-day', 'morning', 'afternoon']] // Valores permitidos
+        }
+    }
 
 }, { tableName: 'bookings', timestamps: false });
 

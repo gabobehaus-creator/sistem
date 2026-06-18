@@ -45,7 +45,7 @@ class BillingConsumptionPanel extends HTMLElement {
     }
 
     // Recibe los detalles de la reserva para calcular totales
-    calculateTotals(startDateValue, endDateValue, pricePerNight) {
+    calculateTotals(startDateValue, endDateValue, pricePerNight, minibarTotal = 0, timeSlot = 'full-day') {
         let durationDays = 0;
         if (startDateValue && endDateValue) {
             const start = new Date(startDateValue + 'T00:00:00Z');
@@ -54,10 +54,16 @@ class BillingConsumptionPanel extends HTMLElement {
                 durationDays = Math.round(Math.abs(end - start) / (1000 * 60 * 60 * 24));
             }
         }
-        const stayCost = durationDays * pricePerNight;
+        let stayCost = durationDays * pricePerNight;
+        
+        // Ajuste de precio para franjas horarias si la duración es 1 día
+        if (durationDays === 1 && (timeSlot === 'morning' || timeSlot === 'afternoon')) {
+            stayCost = pricePerNight / 2;
+        }
+
         this.shadowRoot.getElementById('stayDuration').textContent = `${durationDays} noches`;
         this.shadowRoot.getElementById('stayCost').textContent = stayCost.toFixed(2);
-        this.updateTotalAmount(); 
+        this.updateTotalAmount(this.consumptionsTotal, minibarTotal); // Incluye el total del minibar
     }
 
     // Carga consumos existentes para la bookingId
@@ -93,10 +99,10 @@ class BillingConsumptionPanel extends HTMLElement {
         this.updateTotalAmount(consumptionsTotal);
     }
 
-    updateTotalAmount(consumptionsTotal = 0) {
+    updateTotalAmount(consumptionsTotal = 0, minibarTotal = 0) {
          const stayCostText = this.shadowRoot.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
          const stayCost = parseFloat(stayCostText);
-         const total = stayCost + consumptionsTotal;
+         const total = stayCost + consumptionsTotal + minibarTotal; // Sumamos el total del minibar
          this.shadowRoot.getElementById('totalAmountDisplay').textContent = total.toFixed(2);
     }
 

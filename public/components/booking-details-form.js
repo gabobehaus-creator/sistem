@@ -75,6 +75,18 @@ class BookingDetailsForm extends HTMLElement {
                 <label for="endDate">Fecha de Fin (YYYY-MM-DD):</label>
                 <input type="date" id="endDate">
             </div>
+            
+            <!-- Selector de Franja Horaria -->
+            <div class="form-group">
+                <label for="timeSlotSelect">Franja Horaria:</label>
+                <select id="timeSlotSelect">
+                    <option value="full-day">Día Completo</option>
+                    <option value="morning">Mañana</option>
+                    <option value="afternoon">Tarde</option>
+                </select>
+            </div>
+            <!-- Fin Selector de Franja Horaria -->
+
              <!-- CAMPO DE NOTAS AÑADIDO -->
             <div class="form-group">
                 <label for="notesInput">Notas/Comentarios Adicionales:</label>
@@ -100,6 +112,11 @@ class BookingDetailsForm extends HTMLElement {
             this.shadowRoot.getElementById(id).addEventListener('change', () => {
                 this.dispatchEvent(new CustomEvent('details-changed', { bubbles: true, composed: true }));
             });
+        });
+
+        // Evento para emitir 'details-changed' cuando cambia la franja horaria
+        this.shadowRoot.getElementById('timeSlotSelect').addEventListener('change', () => {
+            this.dispatchEvent(new CustomEvent('details-changed', { bubbles: true, composed: true }));
         });
     }
 
@@ -140,13 +157,14 @@ class BookingDetailsForm extends HTMLElement {
         this.shadowRoot.getElementById('endDate').value = details.endDate || '';
         this.shadowRoot.getElementById('clientName').value = details.clientName || '';
         // Seteamos el valor del email si existe en los detalles
-        this.shadowRoot.getElementById('clientEmail').value = details.clientEmail || ''; 
+        this.shadowRoot.getElementById('clientEmail').value = details.clientEmail || '';
         this.shadowRoot.getElementById('statusSelect').value = details.status || 'reserved';
+        this.shadowRoot.getElementById('timeSlotSelect').value = details.timeSlot || 'full-day'; // Seteamos la franja horaria
         const price = details.pricePerNight || roomPrice;
         this.shadowRoot.getElementById('pricePerNight').value = price.toFixed(2);
         this.shadowRoot.getElementById('notesInput').value = details.notes || ''; // <-- AÑADIDO
-        
-        
+
+
         // Cargar empresa si existe
         if (details.clientId) {
             this.shadowRoot.getElementById('isCompanyCheckbox').checked = true;
@@ -174,7 +192,8 @@ class BookingDetailsForm extends HTMLElement {
             end_date: this.shadowRoot.getElementById('endDate').value,
             price_per_night: parseFloat(this.shadowRoot.getElementById('pricePerNight').value),
             notes: this.shadowRoot.getElementById('notesInput').value, // <-- AÑADIDO
-            client_id: (isCompany && companySelectValue) ? parseInt(companySelectValue) : null // Aseguramos ID numérico o null
+            client_id: (isCompany && companySelectValue) ? parseInt(companySelectValue) : null, // Aseguramos ID numérico o null
+            time_slot: this.shadowRoot.getElementById('timeSlotSelect').value // <-- AÑADIDO
         };
     }
 }

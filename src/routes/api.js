@@ -76,46 +76,59 @@ router.get('/bookings', async (req, res) => {
         const createBookingFromCalendar = async (cal) => {
             
             const { start_date, end_date } = parseIcsEvent(cal.ics || '');
+            const time_slot = cal.time_slot || 'full-day'; // Asumimos 'full-day' para reservas importadas
             if (start_date && end_date) {
                 console.log('Fechas completas:', cal);
                 const room = await Room.findOne({ where: { name: cal.codigo } });
                 console.log('room_id en calendario:', cal.room_id, 'Encontrada habitación:', room ? room.name : 'No encontrada'); // DEBUG
                 if (room) {
                     console.log('Habitación encontrada para calendario:', cal.nombre, 'ID de habitación:', cal.room_id);
-                                        const conflictCount = await Booking.count({
-                    where: {
-                        room_id: room.id,
-                        [Op.or]: [
-                        { start_date: { [Op.between]: [start_date, end_date] } },
-                        { end_date: { [Op.between]: [start_date, end_date] } },
-                        { start_date: { [Op.lte]: start_date }, end_date: { [Op.gte]: end_date } }
-                        ]
-                    }
+                    
+                    // Lógica de detección de conflictos adaptada para franjas horarias
+                    const conflicts = await Booking.findAll({
+                        where: {
+                            room_id: room.id,
+                            [Op.and]: [
+                                {
+                                    [Op.or]: [
+                                        { start_date: { [Op.between]: [start_date, end_date] } },
+                                        { end_date: { [Op.between]: [start_date, end_date] } },
+                                        { start_date: { [Op.lte]: start_date }, end_date: { [Op.gte]: end_date } }
+                                    ]
+                                },
+                                {
+                                    [Op.or]: [
+                                        { time_slot: 'full-day' },
+                                        { time_slot: time_slot },
+                                        { time_slot: time_slot === 'morning' ? 'afternoon' : 'morning' } // Si es morning, choca con afternoon, viceversa
+                                    ]
+                                }
+                            ]
+                        }
                     });
-            console.log("Calendarios avanzando:"); // DEBUG
-            if (conflictCount > 0) {
-                console.log('conficto detectado para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date);
-          //  return { skipped: true, reason: 'conflict', calendar: cal };
-            }
-            console.log('Creando reserva para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date, room);
-            const newBooking = await Booking.create({
-            room_id: room.id,
-            client_id: cal.client_id || null,
-            client_name: cal.client_name || 'Reserva sincronizada',
-            source_channel: cal.source_channel || 'booking',
-            start_date,
-            end_date,
-            status: cal.status || 'reserved',
-            price_per_night: room.price,
-            email: cal.email || null,
-            notes: cal.notes || null
-            });
 
+                    if (conflicts.length > 0) {
+                        console.log('Conflicto detectado para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date, 'Franja:', time_slot);
+                        //return { skipped: true, reason: 'conflict', calendar: cal };
+                    }
+                    console.log('Creando reserva para calendario:', cal.nombre, 'Fechas:', start_date, 'a', end_date, room);
+                    const newBooking = await Booking.create({
+                        room_id: room.id,
+                        client_id: cal.client_id || null,
+                        client_name: cal.client_name || 'Reserva sincronizada',
+                        source_channel: cal.source_channel || 'booking',
+                        start_date,
+                        end_date,
+                        status: cal.status || 'reserved',
+                        price_per_night: room.price,
+                        email: cal.email || null,
+                        notes: cal.notes || null,
+                        time_slot: time_slot // Añadimos el nuevo campo
+                    });
                 }
-
             }
-console.log('creada')
-           
+            console.log('creada');
+
         };
 
 
@@ -139,12 +152,45 @@ console.log('creada')
     }
 });
 
+// Función auxiliar para detectar conflictos de reservas con franjas horarias
+const detectBookingConflicts = async (bookingIdToExclude, room_id, start_date, end_date, time_slot) => {
+    const whereClause = {
+        room_id: room_id,
+        [Op.and]: [
+            {
+                [Op.or]: [
+                    { start_date: { [Op.between]: [start_date, end_date] } },
+                    { end_date: { [Op.between]: [start_date, end_date] } },
+                    { start_date: { [Op.lte]: start_date }, end_date: { [Op.gte]: end_date } }
+                ]
+            },
+            {
+                [Op.or]: [
+                    { time_slot: 'full-day' },
+                    { time_slot: time_slot },
+                    // Si la nueva reserva es 'morning', busca conflictos con 'afternoon'
+                    // Si la nueva reserva es 'afternoon', busca conflictos con 'morning'
+                    // Esto es para el mismo día
+                    ...(time_slot !== 'full-day' ? [{ time_slot: time_slot === 'morning' ? 'afternoon' : 'morning' }] : [])
+                ]
+            }
+        ]
+    };
+
+    if (bookingIdToExclude) {
+        whereClause.id = { [Op.ne]: bookingIdToExclude }; // Excluir la propia reserva al actualizar
+    }
+
+    const conflictCount = await Booking.count({ where: whereClause });
+    return conflictCount > 0;
+};
+
 // Endpoint para crear una nueva reserva
 router.post('/bookings', async (req, res) => {
-     const { room_id, client_id, client_name, start_date, end_date, status, email, notes, source_channel } = req.body; 
+    const { room_id, client_id, client_name, start_date, end_date, status, email, notes, source_channel, time_slot } = req.body;
 
-    if (!room_id || !client_name || !start_date || !end_date || !status) { 
-        return res.status(400).json({ error: "Faltan campos requeridos." });
+    if (!room_id || !client_name || !start_date || !end_date || !status || !time_slot) {
+        return res.status(400).json({ error: "Faltan campos requeridos (incluyendo franja horaria)." });
     }
 
     try {
@@ -154,25 +200,16 @@ router.post('/bookings', async (req, res) => {
         }
         const price_per_night = room.price;
 
-        // Lógica de validación de superposición usando operadores Sequelize (Op)
-        const conflictCount = await Booking.count({
-            where: {
-                room_id: room_id,
-                [Op.or]: [
-                    { start_date: { [Op.between]: [start_date, end_date] } },
-                    { end_date: { [Op.between]: [start_date, end_date] } },
-                    { start_date: { [Op.lte]: start_date }, end_date: { [Op.gte]: end_date } }
-                ]
-            }
-        });
+        // Detección de conflictos con el nuevo campo time_slot
+        const hasConflict = await detectBookingConflicts(null, room_id, start_date, end_date, time_slot);
 
-        if (conflictCount > 0) {
-            return res.status(409).json({ error: "Conflicto de reserva: La habitación ya está ocupada o reservada en esas fechas." });
+        if (hasConflict) {
+            return res.status(409).json({ error: "Conflicto de reserva: La habitación ya está ocupada en esas fechas y franja horaria." });
         }
 
         const newBooking = await Booking.create({
             room_id,
-            client_id: client_id || null, // Guarda NULL si no se proporciona client_id
+            client_id: client_id || null,
             client_name,
             source_channel,
             start_date,
@@ -180,16 +217,17 @@ router.post('/bookings', async (req, res) => {
             status,
             price_per_night,
             email,
-            notes
+            notes,
+            time_slot // Añadimos el nuevo campo
         });
-      /*    await sendBookingConfirmation(email, {
-            client_name,
-            room_name: room.name,
-            start_date,
-            end_date,
-            price_per_night: room.price
-        });*/
-        
+        /*    await sendBookingConfirmation(email, {
+               client_name,
+               room_name: room.name,
+               start_date,
+               end_date,
+               price_per_night: room.price
+           });*/
+
         res.status(201).json({
             message: "Reserva creada exitosamente",
             data: newBooking,
@@ -198,7 +236,7 @@ router.post('/bookings', async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).json({"error": err.message});
+        res.status(500).json({ "error": err.message });
     }
 });
 
@@ -230,15 +268,22 @@ router.put('/bookings/:id/cobrar', async (req, res) => {
 // Endpoint para ACTUALIZAR una reserva existente
 router.put('/bookings/:id', async (req, res) => {
     const { id } = req.params;
-    const { room_id, client_name, start_date, end_date, status, price_per_night, notes, source_channel } = req.body;
+    const { room_id, client_name, start_date, end_date, status, price_per_night, notes, source_channel, time_slot } = req.body; // Incluimos time_slot
 
-    if (!room_id || !client_name || !start_date || !end_date || !status) {
-        return res.status(400).json({ error: "Faltan campos requeridos." });
+    if (!room_id || !client_name || !start_date || !end_date || !status || !time_slot) {
+        return res.status(400).json({ error: "Faltan campos requeridos (incluyendo franja horaria)." });
     }
-    
+
     try {
+        // Detección de conflictos con el nuevo campo time_slot, excluyendo la reserva actual
+        const hasConflict = await detectBookingConflicts(id, room_id, start_date, end_date, time_slot);
+
+        if (hasConflict) {
+            return res.status(409).json({ error: "Conflicto de reserva: La habitación ya está ocupada en esas fechas y franja horaria." });
+        }
+
         const [updatedRowsCount] = await Booking.update(
-            { room_id, client_name, start_date, end_date, status, price_per_night, notes },
+            { room_id, client_id: req.body.client_id || null, client_name, start_date, end_date, status, price_per_night, notes, source_channel, email: req.body.email, time_slot },
             { where: { id: id } }
         );
 
@@ -249,19 +294,20 @@ router.put('/bookings/:id', async (req, res) => {
         }
 
     } catch (err) {
-        res.status(400).json({"error": err.message});
+        res.status(400).json({ "error": err.message });
     }
 });
 
+// Endpoint para obtener todas las reservas (MODIFICADO para incluir datos del Cliente si existe)
 // Endpoint para obtener todas las reservas (MODIFICADO para incluir datos del Cliente si existe)
 router.get('/bookings', async (req, res) => {
     try {
         const bookings = await Booking.findAll({
             // required: false significa que hará un LEFT OUTER JOIN, permitiendo nulos
             include: [{
-                model: Client, 
+                model: Client,
                 attributes: ['id', 'name', 'cuit_cuil', 'invoice_type'],
-                required: false 
+                required: false
             }]
         });
         res.json({
@@ -269,7 +315,7 @@ router.get('/bookings', async (req, res) => {
             data: bookings
         });
     } catch (err) {
-        res.status(400).json({"error": err.message});
+        res.status(400).json({ "error": err.message });
     }
 });
 
@@ -411,17 +457,25 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
 
         if (!booking) { return res.status(404).json({ error: "Reserva no encontrada." }); }
 
-        // 2. Calcular totales (misma lógica que antes)
+        // 2. Calcular totales
         const startDate = new Date(booking.start_date + 'T00:00:00Z');
         const endDate = new Date(booking.end_date + 'T00:00:00Z');
         const durationDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
-        const stayCost = durationDays * booking.price_per_night;
         
+        // Si es una reserva de mañana/tarde y es de 1 día, el costo es la mitad del precio por noche.
+        // Si dura varios días, el precio_per_night aplica por día, ajustando solo el último día si es 'morning'/'afternoon'.
+        let stayCost = durationDays * booking.price_per_night;
         
+        // Ajuste de precio para franjas horarias si la duración es 1 día
+        if (durationDays === 1 && (booking.time_slot === 'morning' || booking.time_slot === 'afternoon')) {
+            stayCost = booking.price_per_night / 2;
+        }
+
+
         // Fetch consumos adicionales (no minibar)
         const consumptions = await Consumption.findAll({ where: { booking_id: bookingId } });
         const consumptionsTotal = consumptions.reduce((sum, item) => sum + item.amount, 0);
-        
+
         // Sumar todos los totales
         const totalAmount = stayCost + consumptionsTotal + (minibar_total || 0);
 

@@ -125,14 +125,16 @@ class BookingModal extends HTMLElement {
         this.currentRoomPrice = data.roomPrice || 0;
         
         // Pasar datos iniciales al subcomponente de detalles
+        // Pasar datos iniciales al subcomponente de detalles, incluyendo timeSlot
         this.shadow.getElementById('detailsForm').setDetails(data, this.currentRoomPrice);
 
         // Actualizar visibilidad de botones y panel de facturación
         this.updateActionButtonVisibility(data.status);
-        if (data.status === 'occupied' || data.status === 'checked-out') {
+        if (data.status === 'occupied' || data.status === 'checked-out' || data.status === 'paid' || data.status === 'invoiced') {
             this.shadow.getElementById('billingPanel').fetchConsumptions(this.currentBookingId);
+            this.shadow.getElementById('minibarConsumptionPanel').setBookingId(this.currentBookingId);
         }
-        
+
         this.shadow.getElementById('modalTitle').textContent = data.bookingId ? 'Editar Reserva' : 'Nueva Reserva';
         this.syncDetailsToBilling();
         this.shadow.getElementById('bookingModalOverlay').style.display = 'flex';
@@ -199,10 +201,10 @@ class BookingModal extends HTMLElement {
         // Obtiene TODOS los datos, incluyendo client_email, gracias a la modificación anterior de getDetails()
         const bookingData = this.shadow.getElementById('detailsForm').getDetails();
         bookingData.status = status || bookingData.status; // Permite actualizar el estado si se pasa como argumento
-        
+
         // Añadimos validación básica para el email si es una nueva reserva o si lo requieres siempre
-        if (!bookingData.client_name || !bookingData.start_date || !bookingData.end_date ) {
-            alert("Por favor complete todos los campos requeridos (Nombre, Fecha Inicio, Fecha Fin, Email).");
+        if (!bookingData.client_name || !bookingData.start_date || !bookingData.end_date || !bookingData.time_slot) {
+            alert("Por favor complete todos los campos requeridos (Nombre, Fecha Inicio, Fecha Fin, Franja Horaria).");
             return;
         }
 
@@ -264,17 +266,19 @@ class BookingModal extends HTMLElement {
 
                     const billingPanel = this.shadow.getElementById('billingPanel');
                     const paymentMethod = billingPanel.getPaymentMethod();
-                    const total = +billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent + lateAdd;
+                    const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
+                    const total = parseFloat(billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent) + lateAdd + minibarConsumptionPanel.getMinibarTotal();
 
-                    if (confirm(`El total a pagar es $${total}. ¿Confirmar el cobro?`)) {
-                        // 1. Establecer el estado a checked-out en el subcomponente
+                    if (confirm(`El total a pagar es $${total.toFixed(2)}. ¿Confirmar el cobro?`)) {
+                        // Establecer el estado a 'paid' en el subcomponente
+                        this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'paid';
                         try {
-                            // 2. Guardar/actualizar la reserva.
-                            this.handleSave('paid'); 
-                            
+                            // Guardar/actualizar la reserva.
+                            this.handleSave('paid');
+
                         } catch (error) {
-                            console.error("Error durante el check-out:", error);
-                            alert("Ocurrió un error crítico durante el check-out o la facturación: " + error.message);
+                            console.error("Error durante el cobro:", error);
+                            alert("Ocurrió un error crítico durante el cobro: " + error.message);
                         }
                     }
 
@@ -291,8 +295,9 @@ class BookingModal extends HTMLElement {
         }
 
         const billingPanel = this.shadow.getElementById('billingPanel');
+        const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
         const paymentMethod = billingPanel.getPaymentMethod();
-        const total = billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent;
+        const total = parseFloat(billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent) + minibarConsumptionPanel.getMinibarTotal();
 
         if (confirm(`¿Confirma generar factura?`)) {
             // 1. Establecer el estado a checked-out en el subcomponente
@@ -331,30 +336,35 @@ class BookingModal extends HTMLElement {
         const paymentMethod = billingPanel.getPaymentMethod();
         const total = billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent;
 
-        if (confirm(`El total a pagar es $${total}. ¿Confirmar Check-Out y generar factura?`)) {
+        if (confirm(`El total a pagar es $${total.toFixed(2)}. ¿Confirmar Check-Out y generar factura?`)) {
             // 1. Establecer el estado a checked-out en el subcomponente
             this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'checked-out';
-            
+
             try {
                 // 2. Guardar/actualizar la reserva.
-               await this.handleSave(); 
-                
+                await this.handleSave('checked-out');
+
                 // 3. Generamos la factura.
-                await this.generateInvoice(this.currentBookingId, paymentMethod); 
-                
+                await this.generateInvoice(this.currentBookingId, paymentMethod);
+
             } catch (error) {
                 console.error("Error durante el check-out:", error);
                 alert("Ocurrió un error crítico durante el check-out o la facturación: " + error.message);
             }
         }
     }
-    
+
     async generateInvoice(bookingId, paymentMethod) {
         try {
+            const minibarTotal = this.shadow.getElementById('minibarConsumptionPanel').getMinibarTotal();
+
             const response = await fetch(`/api/invoices/generate/${bookingId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ payment_method: paymentMethod }) 
+                body: JSON.stringify({
+                    payment_method: paymentMethod,
+                    minibar_total: minibarTotal // Enviar el total del minibar al backend para la factura
+                })
             });
 
             if (response.ok) {

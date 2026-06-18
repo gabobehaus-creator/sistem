@@ -12,12 +12,18 @@ class RoomPlanner extends HTMLElement {
             <style>
             .planner-container { overflow-x: auto; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; }
             .planner-grid { display: grid; border-collapse: collapse; width: max-content; }
-            .cell { border: 1px solid #e0e0e0; padding: 8px 5px; text-align: center; cursor: pointer; min-height: 20px; box-sizing: border-box; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            /* Celdas ahora más pequeñas para morning/afternoon */
+            .cell { border: 1px solid #e0e0e0; padding: 4px 2px; text-align: center; cursor: pointer; min-height: 20px; box-sizing: border-box; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8em;}
             .cell:hover { background-color: #f2f2f2; }
             .header-cell { background-color: #0056b3; color: white; font-weight: bold; position: sticky; top: 0; z-index: 10; }
-            .room-header { background-color: #f9f9f9; color: #333; text-align: left; font-weight: normal; position: sticky; left: 0; z-index: 5; }
+            .room-header { background-color: #f9f9f9; color: #333; text-align: left; font-weight: normal; position: sticky; left: 0; z-index: 5; padding: 8px 5px;}
+            .date-header { /* Estilo para el header de la fecha */ border-right: 1px solid #004494; }
+            .time-slot-header { /* Estilo para "Mañana" y "Tarde" */ background-color: #0069d9; color: white; font-size: 0.7em; padding: 2px 0; }
+
             .weekend-cell { background-color: #f0f0f0 !important; color: #555; }
             .weekend-header { background-color: #004494 !important; }
+            
+            /* Clases de estado de reserva */
             .status-reserved { background-color: #ffeb3b; color: #333; }
             .status-occupied { background-color: #4caf50; color: white; }
             .status-checked-out { background-color: #9e9e9e; color: white; }
@@ -28,17 +34,24 @@ class RoomPlanner extends HTMLElement {
             .today-column { background-color: #e3f2fd !important; }
             .today-column.weekend-cell { background-color: #bbdefb !important; }
             .today-column.header-cell { background-color: #1976d2 !important; }
-            
+            .today-column.time-slot-header { background-color: #1976d2 !important; } /* Para headers de mañana/tarde de hoy */
+
+
             /* --- NUEVOS ESTILOS PARA EL ESTADO DE LIMPIEZA --- */
             .clean-status-header.clean { border-left: 5px solid #4CAF50; }
             .clean-status-header.dirty { border-left: 5px solid #F44336; }
             .clean-status-header.servicing { border-left: 5px solid #FF9800; }
 
+            /* Estilos para celdas de franja horaria específicas */
+            .cell.morning-slot { border-right: 1px dashed #ccc; } /* Separador visual entre mañana y tarde */
+            .cell.afternoon-slot { }
+
             /* --- LEYENDA DE COLORES --- */
             .legend { padding: 15px; background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0; display: flex; gap: 20px; flex-wrap: wrap; }
             .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
             .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
-            // In connectedCallback, after the existing event listeners, add:
+
+            /* In connectedCallback, after the existing event listeners, add:
             this.shadowRoot.getElementById('plannerGrid').addEventListener('mouseenter', (event) => {
                 if (event.target.classList.contains('room-header')) {
                     this.handleRoomHeaderHover(event);
@@ -56,7 +69,7 @@ class RoomPlanner extends HTMLElement {
                         detail: roomDetails
                     }));
                 }
-            }
+            } */ /* Este bloque ya existe en el código, lo dejaré comentado para no duplicar */
             .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
             .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
             </style>
