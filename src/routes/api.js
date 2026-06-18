@@ -417,11 +417,6 @@ router.post('/invoices/generate/:bookingId', async (req, res) => {
         const durationDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
         const stayCost = durationDays * booking.price_per_night;
         
-        // 2. Calcular totales
-        const startDate = new Date(booking.start_date + 'T00:00:00Z');
-        const endDate = new Date(booking.end_date + 'T00:00:00Z');
-        const durationDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
-        const stayCost = durationDays * booking.price_per_night;
         
         // Fetch consumos adicionales (no minibar)
         const consumptions = await Consumption.findAll({ where: { booking_id: bookingId } });
