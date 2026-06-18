@@ -155,14 +155,15 @@ class BookingModal extends HTMLElement {
         const deleteButton = this.shadow.getElementById('deleteButton');
         const checkInButton = this.shadow.getElementById('checkInButton');
         const billingPanel = this.shadow.getElementById('billingPanel');
+        const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel'); // Se añade el panel de minibar
 
         const hasBooking = Boolean(this.currentBookingId);
         const isReserved = status === 'reserved';
         const isLiberated = status === 'liberated';
         const isOccupied = status === 'occupied';
         const isCheckedOut = status === 'checked-out';
-        const isCobrado = status === 'paid';
-        const isFacturado = status === 'facturado';
+        const isPaid = status === 'paid'; // Se renombra de isCobrado a isPaid para mayor claridad
+        const isInvoiced = status === 'invoiced';
 
         // Mostrar siempre el botón Guardar
         saveButton.style.display = 'inline-block';
@@ -170,18 +171,25 @@ class BookingModal extends HTMLElement {
         // Lógica condicional para los botones según el estado
         deleteButton.style.display = hasBooking && isReserved ? 'inline-block' : 'none';
         checkInButton.style.display = hasBooking && (isReserved || isLiberated) ? 'inline-block' : 'none';
-        cobrarButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
-        cobrarButton.style.disabled = isCobrado == 'paid'; // Solo habilitar si está ocupado
-        facturarButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
-        checkOutButton.style.display = hasBooking && (isOccupied || isCobrado) ? 'inline-block' : 'none';
-        billingPanel.style.display = hasBooking && (isOccupied || isCheckedOut) ? 'block' : 'none';
+        
+        // Cobrar y Facturar son visibles si está ocupada o ya cobrada/facturada
+        cobrarButton.style.display = hasBooking && (isOccupied || isPaid) ? 'inline-block' : 'none';
+        facturarButton.style.display = hasBooking && (isOccupied || isPaid || isCheckedOut || isInvoiced) ? 'inline-block' : 'none';
+        
+        // CheckOut es visible si está ocupada o cobrada
+        checkOutButton.style.display = hasBooking && (isOccupied || isPaid) ? 'inline-block' : 'none';
 
+        // Paneles de consumos son visibles si hay una reserva y no está en estado inicial de "liberated" o "reserved"
+        billingPanel.style.display = hasBooking && (isOccupied || isCheckedOut || isPaid || isInvoiced) ? 'block' : 'none';
+        minibarConsumptionPanel.style.display = hasBooking && (isOccupied || isCheckedOut || isPaid || isInvoiced) ? 'block' : 'none';
 
-        // Si la reserva ya está cobrada, no mostramos check-in ni check-out
-        if (isCheckedOut) {
-            checkInButton.style.display = 'none';
-            facturarButton.style.display = 'none';
-            cobrarButton.style.display = 'none';
+        // Deshabilitar cobrar si ya está cobrado
+        if (isPaid) {
+            cobrarButton.disabled = true;
+            cobrarButton.textContent = 'Cobrado';
+        } else {
+            cobrarButton.disabled = false;
+            cobrarButton.textContent = 'Cobrar';
         }
 
         // Si estamos creando una nueva reserva, ocultamos botones de actions que no aplican
@@ -192,6 +200,7 @@ class BookingModal extends HTMLElement {
             checkOutButton.style.display = 'none';
             cobrarButton.style.display = 'none';
             billingPanel.style.display = 'none';
+            minibarConsumptionPanel.style.display = 'none'; // Se oculta el panel de minibar también
         }
     }
 
