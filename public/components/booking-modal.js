@@ -285,23 +285,33 @@ class BookingModal extends HTMLElement {
     }
 
     async handleFacturar() {
-        // Aquí podrías abrir un submodal específico para el proceso de facturación o simplemente cambiar el estado a "facturado"
         if (!this.currentBookingId) {
              alert("Error: No se puede facturar una reserva inexistente.");
              return;
         }
-            const dialog = this.shadow.getElementById('myDialog');
-            const confirmBtn = this.shadow.getElementById('confirmBtn');
-                dialog.showModal();
-                confirmBtn.onclick = () => {
-                    const checkbox = this.shadow.getElementById('checkOption');
-                    if (checkbox.checked) {
-                        this.facturar(true);
-                    } else {
-                        this.facturar(false)
-                    }   
-                }
+
+        const billingPanel = this.shadow.getElementById('billingPanel');
+        const paymentMethod = billingPanel.getPaymentMethod();
+        const total = billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent;
+
+        if (confirm(`¿Confirma generar factura?`)) {
+            // 1. Establecer el estado a checked-out en el subcomponente
+            this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'invoiced';
+            
+            try {
+                // 2. Guardar/actualizar la reserva.
+               await this.handleSave(); 
+                
+                // 3. Generamos la factura.
+                await this.generateInvoice(this.currentBookingId, paymentMethod); 
+                
+            } catch (error) {
+                console.error("Error durante el check-out:", error);
+                alert("Ocurrió un error crítico durante el check-out o la facturación: " + error.message);
+            }
+        }
     }
+
 
     async facturar(lateCheckout) {
         // Aquí podrías abrir un submodal específico para el proceso de facturación o simplemente cambiar el estado a "facturado"
@@ -349,7 +359,7 @@ class BookingModal extends HTMLElement {
 
             if (response.ok) {
                 const data = await response.json();
-                alert(`Check-out completado. Factura #${data.invoiceNumber} generada exitosamente.`);
+                alert(`Factura #${data.invoiceNumber} generada exitosamente.`);
                 document.dispatchEvent(new CustomEvent('booking-saved'));
                 this.closeModal();
             } else {

@@ -145,7 +145,7 @@ class RoomPlanner extends HTMLElement {
            
             // Solo devolvemos la reserva si está activa (occupied o reserved)
             const isActive = (b.status === 'occupied' || b.status === 'reserved' 
-                || b.status === 'checked-out' || b.status === 'paid'); // Consideramos checked-out y blocked como "activos" para mostrar su estado en el planner
+                || b.status === 'checked-out' || b.status === 'paid' || b.status === 'invoiced'); // Consideramos checked-out y blocked como "activos" para mostrar su estado en el planner
             // Agregar esta propiedad en el constructor
             this.today = new Date();
             return b.room_id == roomId && targetDate >= start && targetDate < end && isActive; 
