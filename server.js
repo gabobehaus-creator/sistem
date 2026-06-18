@@ -37,6 +37,10 @@ app.get('/users-abm.html', authenticateMiddleware, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'clients.html'));
 });
 
+app.get('/minibar.html', authenticateMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'minibar.html'));
+});
+
 // ----------------------------------------
 app.use('/api', apiRoutes);
 
