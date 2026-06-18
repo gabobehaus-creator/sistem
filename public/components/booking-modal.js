@@ -58,6 +58,9 @@ class BookingModal extends HTMLElement {
                         
                         <!-- Componente de Facturación/Consumos -->
                         <billing-consumption-panel id="billingPanel" style="display:none;"></billing-consumption-panel>
+                        
+                        <!-- Componente de Consumos de Frigobar -->
+                        <minibar-consumption-panel id="minibarConsumptionPanel" style="display:none;"></minibar-consumption-panel>
 
                         <div class="button-group">
                             <button type="button" class="btn-cancel" id="cancelButton">Cancelar</button>
