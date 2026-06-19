@@ -52,7 +52,7 @@ class RoomPlanner extends HTMLElement {
             .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
 
             /*
-            This block contains a commented-out section for `handleRoomHeaderHover`.
+            This block contains a commented-out section for .
             The request is to enable this functionality. The following changes
             will move this logic out of comments and integrate it properly.
             */
