@@ -119,7 +119,7 @@ class BookingModal extends HTMLElement {
     syncDetailsToBilling() {
         const details = this.shadow.getElementById('detailsForm').getDetails();
         this.shadow.getElementById('billingPanel').calculateTotals(
-            details.start_date, details.end_date, details.price_per_night
+            details.start_date, details.end_date, details.price_per_night, 0, details.time_slot
         );
     }
 
