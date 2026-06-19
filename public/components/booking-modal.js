@@ -134,8 +134,19 @@ class BookingModal extends HTMLElement {
         // Actualizar visibilidad de botones y panel de facturación
         this.updateActionButtonVisibility(data.status);
         if (data.status === 'occupied' || data.status === 'checked-out' || data.status === 'paid' || data.status === 'invoiced') {
-            this.shadow.getElementById('billingPanel').fetchConsumptions(this.currentBookingId);
-            this.shadow.getElementById('minibarConsumptionPanel').setBookingId(this.currentBookingId);
+            const billingPanel = this.shadow.getElementById('billingPanel');
+            if (billingPanel && typeof billingPanel.fetchConsumptions === 'function') {
+                billingPanel.fetchConsumptions(this.currentBookingId);
+            } else {
+                console.warn("Billing panel not ready or missing fetchConsumptions method.");
+            }
+
+            const minibarPanel = this.shadow.getElementById('minibarConsumptionPanel');
+            if (minibarPanel && typeof minibarPanel.setBookingId === 'function') {
+                minibarPanel.setBookingId(this.currentBookingId);
+            } else {
+                console.warn("Minibar consumption panel not ready or missing setBookingId method. Element:", minibarPanel);
+            }
         }
 
         this.shadow.getElementById('modalTitle').textContent = data.bookingId ? 'Editar Reserva' : 'Nueva Reserva';
