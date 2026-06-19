@@ -2,7 +2,6 @@
 class BillingConsumptionPanel extends HTMLElement {
     constructor() {
         super();
-        super();
         this.attachShadow({ mode: 'open' });
         this.consumptionsTotal = 0; // Initialize a property to hold the sum of additional consumptions
         this.shadowRoot.innerHTML = `
