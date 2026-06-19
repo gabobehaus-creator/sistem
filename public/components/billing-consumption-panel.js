@@ -3,6 +3,7 @@ class BillingConsumptionPanel extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.bookingId = null; // Add bookingId property
         this.consumptionsTotal = 0; // Initialize a property to hold the sum of additional consumptions
         this.shadowRoot.innerHTML = `
             <style>
@@ -43,6 +44,15 @@ class BillingConsumptionPanel extends HTMLElement {
 
     connectedCallback() {
         this.shadowRoot.getElementById('addConsumptionButton').addEventListener('click', () => this.handleAddConsumption());
+    }
+
+    setBookingId(id) {
+        this.bookingId = id;
+        if (id) {
+            this.fetchConsumptions(id);
+        } else {
+            this.renderConsumptions([]); // Clear consumptions if no booking ID
+        }
     }
 
     // Recibe los detalles de la reserva para calcular totales
@@ -115,26 +125,32 @@ class BillingConsumptionPanel extends HTMLElement {
         const amountInput = this.shadowRoot.getElementById('consumptionAmount');
         const description = descriptionInput.value;
         const amount = parseFloat(amountInput.value);
-        // Dispatch custom event to parent (BookingModal shell) to get currentBookingId
-        const event = new CustomEvent('get-booking-id', { bubbles: true, composed: true, detail: { callback: async (bookingId) => {
-            if (!description || isNaN(amount) || amount <= 0 || !bookingId) {
-                alert("Ingrese una descripción y un monto válido y asegúrese de que la reserva exista.");
-                return;
-            }
+        const bookingId = this.bookingId; // Use the stored bookingId
+
+        if (!description || isNaN(amount) || amount <= 0 || !bookingId) {
+            alert("Ingrese una descripción y un monto válido y asegúrese de que la reserva exista.");
+            return;
+        }
+
+        try {
             const response = await fetch('/api/consumptions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ booking_id: bookingId, description, amount, date: new Date().toISOString().split('T')[0] })
             });
+
             if (response.ok) {
                 descriptionInput.value = '';
                 amountInput.value = '';
                 await this.fetchConsumptions(bookingId); // Refresca la lista local
             } else {
-                alert("Error al añadir consumo.");
+                const errorData = await response.json();
+                alert("Error al añadir consumo: " + (errorData.error || "Error desconocido"));
             }
-        }}});
-        this.dispatchEvent(event);
+        } catch (error) {
+            console.error('Fetch error adding consumption:', error);
+            alert("Hubo un error de conexión con el servidor al agregar consumo.");
+        }
     }
     
     // Método para obtener el método de pago seleccionado
