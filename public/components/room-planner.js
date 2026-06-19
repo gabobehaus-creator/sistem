@@ -149,11 +149,13 @@ class RoomPlanner extends HTMLElement {
 
     // Helper para obtener la fecha y hora de fin real de una reserva (exclusiva)
     getBookingActualEndDateTime(booking) {
-        const datePart = booking.end_date + 'T';
+        const endDateObj = new Date(booking.end_date + 'T00:00:00Z'); // Start of the end_date
         if (booking.time_slot === 'morning') {
-            return new Date(datePart + '12:00:00Z');
+            return new Date(endDateObj.getTime() + (12 * 60 * 60 * 1000)); // end_date 12:00:00Z
         }
-        return new Date(datePart + '00:00:00Z'); // full-day or afternoon ends at 00:00 next day
+        // For 'full-day' and 'afternoon', the booking occupies until the end of the day.
+        // So, the exclusive end is the start of the *next* day.
+        return new Date(endDateObj.getTime() + (24 * 60 * 60 * 1000)); // (end_date + 1) 00:00:00Z
     }
 
     // Helper para obtener la fecha y hora de inicio de un slot

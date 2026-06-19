@@ -57,22 +57,41 @@ class BillingConsumptionPanel extends HTMLElement {
 
     // Recibe los detalles de la reserva para calcular totales
     calculateTotals(startDateValue, endDateValue, pricePerNight, minibarTotal = 0, timeSlot = 'full-day') {
-        let durationDays = 0;
+        let durationSlots = 0; // Represents the number of morning/afternoon slots
+        
         if (startDateValue && endDateValue) {
-            const start = new Date(startDateValue + 'T00:00:00Z');
-            const end = new Date(endDateValue + 'T00:00:00Z');
-            if (end > start) {
-                durationDays = Math.round(Math.abs(end - start) / (1000 * 60 * 60 * 24));
+            // Helper para obtener la fecha y hora de inicio real de una reserva
+            const getActualStart = (dateStr, slot) => {
+                const datePart = dateStr + 'T';
+                return slot === 'afternoon' ? new Date(datePart + '12:00:00Z') : new Date(datePart + '00:00:00Z');
+            };
+
+            // Helper para obtener la fecha y hora de fin real de una reserva (exclusiva)
+            const getActualEnd = (dateStr, slot) => {
+                const endDateObj = new Date(dateStr + 'T00:00:00Z');
+                return slot === 'morning' ? new Date(endDateObj.getTime() + (12 * 60 * 60 * 1000)) : new Date(endDateObj.getTime() + (24 * 60 * 60 * 1000));
+            };
+
+            const bookingStart = getActualStart(startDateValue, timeSlot);
+            const bookingEnd = getActualEnd(endDateValue, timeSlot);
+
+            let currentSlotPointer = bookingStart.getTime();
+            while (currentSlotPointer < bookingEnd.getTime()) {
+                durationSlots++;
+                // Move to the next half-day slot
+                currentSlotPointer += (12 * 60 * 60 * 1000); // Add 12 hours
             }
         }
-        let stayCost = durationDays * pricePerNight;
         
-        // Ajuste de precio para franjas horarias si la duración es 1 día
-        if (durationDays === 1 && (timeSlot === 'morning' || timeSlot === 'afternoon')) {
-            stayCost = pricePerNight / 2;
-        }
+        // Each day is 2 slots. Price per night needs to be adjusted per slot.
+        // Assuming pricePerNight is for a full day (2 slots)
+        const pricePerSlot = pricePerNight / 2;
+        let stayCost = durationSlots * pricePerSlot;
 
-        this.shadowRoot.getElementById('stayDuration').textContent = `${durationDays} noches`;
+        // Display duration in a more accurate way for slots, or stick to days for simplicity.
+        // If we want to display days, we can do durationSlots / 2.
+        const durationDaysDisplay = Math.ceil(durationSlots / 2); // Round up to show at least 1 day for a half-day booking
+        this.shadowRoot.getElementById('stayDuration').textContent = `${durationDaysDisplay} días (${durationSlots} franjas)`;
         this.shadowRoot.getElementById('stayCost').textContent = stayCost.toFixed(2);
         this.updateTotalAmount(this.consumptionsTotal, minibarTotal); // Ensure minibarTotal is passed correctly
     }
