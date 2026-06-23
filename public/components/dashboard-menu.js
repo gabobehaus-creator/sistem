@@ -29,7 +29,12 @@ class DashboardMenu extends HTMLElement {
                 submenu: [
                     { href: '/reports.html', label: 'Ocupacion', roles: ['admin', 'supervisor'] },
                     // Solo Admin y Supervisor pueden ver Ganancias/Pérdidas
-                    { href: '/profit-loss-report.html', label: 'Ganancias/Pérdidas', roles: ['admin', 'supervisor'] } 
+                    { href: '/profit-montly.html', label: 'Rentabilidad', roles: ['admin', 'supervisor'] },
+                    { href: '/profit-montly-asoc.html', label: 'Rentabilidad de socios', roles: ['admin', 'supervisor'] },
+                    { href: '/profit-montly-efectiv-asoc.html', label: 'Rentabilidad efectiva de socios', roles: ['admin', 'supervisor'] },
+                    { href: '/profit-types.html', label: 'Conformacion de ingresos', roles: ['admin', 'supervisor'] },
+                    { href: '/profit-loss.html', label: 'Ingresos/Egresos', roles: ['admin', 'supervisor'] },
+                    { href: '/bills.html', label: 'Gastos', roles: ['admin', 'supervisor'] }
                 ]
             },
             { href: '/housekeeping.html', label: 'Limpieza', icon: '🧹', roles: ['admin', 'supervisor', 'operador', 'limpieza' ] },

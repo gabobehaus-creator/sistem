@@ -84,6 +84,8 @@ class MonthlyOccupancyReport extends HTMLElement {
                     color: #333;
                 }
                 .chart-container {
+                    max-width: 90%;
+                    max-height: 50vh;
                     margin-top: 30px;
                     padding: 20px;
                     background-color: #fff;
