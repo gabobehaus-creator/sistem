@@ -6,7 +6,8 @@ const bcrypt = require('bcrypt');
 const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, sequelize, Client, MinibarProduct, MinibarConsumption } = require('../models'); 
 const { Op } = require('sequelize'); // Operadores de Sequelize para consultas complejas
 const { sendBookingConfirmation } = require('../services/email-service'); // Importa el nuevo servicio
-const {BookingReservas} = require('../booking/reservas'); // Importa la clase BookingReservas
+const { BookingReservas } = require('../booking/reservas'); // Importa la clase BookingReservas
+const { getMonthlyOccupancy } = require('../services/monthly-occupancy-service'); // Importa el nuevo servicio de ocupación
 
 // Aplicamos el middleware de autenticación a todas las rutas de este router por defecto
 router.use(authenticateMiddleware);
@@ -575,6 +576,23 @@ router.get('/invoices', async (req, res) => {
         res.json({ data: invoices });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Endpoint de Reporte de Ocupación Mensual ---
+router.get('/reports/monthly-occupancy', async (req, res) => {
+    const { year } = req.query;
+
+    if (!year || isNaN(year)) {
+        return res.status(400).json({ error: "Se requiere un año válido." });
+    }
+
+    try {
+        const occupancyReport = await getMonthlyOccupancy(parseInt(year, 10));
+        res.json({ message: "success", data: occupancyReport });
+    } catch (err) {
+        console.error("Error al generar el reporte de ocupación mensual:", err);
+        res.status(500).json({ error: "Error interno del servidor al generar el reporte." });
     }
 });
 
