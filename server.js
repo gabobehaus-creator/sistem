@@ -1,7 +1,8 @@
 // server.js (CORREGIDO PARA RAILWAY)
+require('dotenv').config(); // Load environment variables at the very beginning
 const express = require('express');
 const path = require('path');
-const cookieParser = require('cookie-parser'); 
+const cookieParser = require('cookie-parser');
 const app = express();
 
 

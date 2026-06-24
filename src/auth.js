@@ -4,9 +4,22 @@ const bcrypt = require('bcrypt');
 const { User } = require('./models'); // USAMOS EL MODELO
 
 // Middleware de Autenticación (Este middleware de cookies no cambia, sigue igual)
-function authenticateMiddleware(req, res, next) {
+async function authenticateMiddleware(req, res, next) {
     if (req.cookies && req.cookies.user_id) {
-        next(); 
+        try {
+            const user = await User.findByPk(req.cookies.user_id, { attributes: ['id', 'username', 'role'] });
+            if (user) {
+                req.user = user; // Attach user object to request
+                next();
+            } else {
+                res.clearCookie('user_id'); // Clear invalid cookie
+                res.redirect('/');
+            }
+        } catch (error) {
+            console.error("Error authenticating user:", error);
+            res.clearCookie('user_id');
+            res.redirect('/');
+        }
     } else {
         res.redirect('/');
     }
