@@ -88,38 +88,115 @@ class DashboardMenu extends HTMLElement {
         // --- 3. Renderizado final en el Shadow DOM ---
         this.shadow.innerHTML = `
             <style>
-                /* Pega todo tu CSS existente aquí, sin cambios */
-                :host {
-                    --primary-color: #0056b3; 
-                    --secondary-color: #ff9800;
-                    --text-color-light: white;
-                    --menu-bg: #2C3E50;
-                    --menu-hover-bg: #34495E;
+                .menu-container {
+                    width: 220px;
+                    background-color: var(--menu-bg);
+                    color: var(--menu-text-color);
+                    padding: 20px 0;
+                    height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+                    position: fixed;
+                    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                }
+                
+                .logo {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    font-size: 1.5em;
+                    font-weight: bold;
+                    color: var(--secondary-color);
                 }
 
-                .menu-container {
-                    width: 220px; background-color: var(--menu-bg); color: var(--text-color-light); padding: 20px 0;
-                    height: 100vh; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-                    position: fixed; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                nav ul {
+                    list-style: none;
+                    padding: 0;
+                    flex-grow: 1;
                 }
-                .logo { text-align: center; margin-bottom: 30px; font-size: 1.5em; font-weight: bold; color: var(--secondary-color); }
-                nav ul { list-style: none; padding: 0; flex-grow: 1; }
-                .menu-item a, .logout-btn { display: flex; align-items: center; padding: 12px 20px; text-decoration: none; color: var(--text-color-light); transition: background-color 0.3s; font-size: 0.9em; }
-                .menu-item a:hover, .menu-item a.active { background-color: var(--menu-hover-bg); border-left: 4px solid var(--secondary-color); }
-                .menu-item span.icon { margin-right: 10px; font-size: 1.1em; }
-                .submenu { display: none; background-color: #34495E; padding-left: 30px; }
-                .menu-item.expanded .submenu { display: block; }
-                .menu-item.has-submenu > a::after { content: '▼'; margin-left: auto; font-size: 0.7em; transition: transform 0.2s; }
-                .menu-item.expanded.has-submenu > a::after { transform: rotate(180deg); }
-                .logout-section { padding: 10px 20px; }
-                #logoutButton { background-color: #e74c3c; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; font-size: 0.9em; }
+
+                .menu-item a, .logout-btn {
+                    display: flex;
+                    align-items: center;
+                    padding: 12px 20px;
+                    text-decoration: none;
+                    color: var(--menu-text-color);
+                    transition: background-color 0.3s;
+                    font-size: 0.9em;
+                }
+
+                .menu-item a:hover, .menu-item a.active {
+                    background-color: var(--menu-hover-bg);
+                    border-left: 4px solid var(--secondary-color);
+                }
+
+                .menu-item span.icon {
+                    margin-right: 10px;
+                    font-size: 1.1em;
+                }
+
+                /* Submenús */
+                .submenu {
+                    display: none; 
+                    background-color: var(--menu-hover-bg); 
+                    padding-left: 30px;
+                }
+                .menu-item.expanded .submenu {
+                    display: block;
+                }
+                .menu-item.has-submenu > a::after {
+                    content: '▼';
+                    margin-left: auto;
+                    font-size: 0.7em;
+                    transition: transform 0.2s;
+                }
+                .menu-item.expanded.has-submenu > a::after {
+                    transform: rotate(180deg);
+                }
+
+                .logout-section {
+                    padding: 10px 20px;
+                }
+                #logoutButton {
+                    background-color: #e74c3c; 
+                    color: white;
+                    border: none;
+                    padding: 10px;
+                    width: 100%;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 0.9em;
+                }
+                :host-context(html.dark-mode) #logoutButton {
+                    background-color: #c0392b; /* Darker red for dark mode */
+                }
             </style>
-            
             <div class="menu-container">
                 <div class="logo">🏨 Hotel Admin (${this.userRole})</div>
                 <nav>
                     <ul>
-                        ${navHtml} <!-- Insertamos el HTML dinámico aquí -->
+                        <li class="menu-item"><a href="/dashboard"><span class="icon">🏠</span> Dashboard</a></li>
+                        <li class="menu-item"><a href="/planner.html"><span class="icon">📅</span> Planificador Ocupación</a></li>
+                        <li class="menu-item has-submenu">
+                            <a href="#"><span class="icon">📊</span> Reportes</a>
+                            <ul class="submenu">
+                                <li><a href="/reports.html">Ocupacion</a></li>
+                                <li><a href="/profit-loss-report.html">Ganancias/Pérdidas</a></li>
+                            </ul>
+                        </li>
+                        <li class="menu-item"><a href="/housekeeping.html"><span class="icon">🧹</span> Limpieza</a></li>
+                        <li class="menu-item"><a href="/invoices.html"><span class="icon">🧾</span> Facturación</a></li>
+                        <li class="menu-item"><a href="/expenses.html"><span class="icon">💸</span> Gastos Operativos</a></li>
+                        
+                        <li class="menu-item has-submenu">
+                            <a href="#"><span class="icon">⚙️</span> Configuración</a>
+                            <ul class="submenu">
+                                <li><a href="/prices.html">Precios y Tarifas</a></li>
+                                <li><a href="/employees.html">Gestión Empleados</a></li>
+                                <li><a href="/shifts-planner.html">Planificador Turnos</a></li>
+                                <li><a href="/settings-panel.html">Ajustes Cuenta</a></li>
+                            </ul>
+                        </li>
                     </ul>
                 </nav>
                 <div class="logout-section">
