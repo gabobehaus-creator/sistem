@@ -39,7 +39,7 @@ router.get('/bookings',(req, res) => {
 
 // Endpoint para crear una nueva reserva (ACTUALIZADO P1/P3 con validación de superposición robusta)
 router.post('/bookings', (req, res) => {
-    const { room_id, client_name, start_date, end_date, status } = req.body;
+    const { room_id, client_name, start_date, end_date, status, price_per_night: explicit_price_per_night } = req.body;
 
     if (!room_id || !client_name || !start_date || !end_date || !status) {
         return res.status(400).json({ error: "Faltan campos requeridos." });
@@ -50,7 +50,13 @@ router.post('/bookings', (req, res) => {
         if (err || !room) {
             return res.status(404).json({ error: "Habitación no encontrada o error de precio." });
         }
-        const price_per_night = room.price; // Capturamos el precio actual
+        // Si se proporciona un price_per_night explícito, úsalo; de lo contrario, usa el precio de la habitación.
+        let price_per_night = explicit_price_per_night !== undefined ? explicit_price_per_night : room.price;
+
+        // FIX: Validar price_per_night
+        if (typeof price_per_night !== 'number' || price_per_night <= 0) {
+            return res.status(400).json({ error: "El precio por noche debe ser un número positivo." });
+        }
 
         // Lógica de validación de superposición robusta para intervalos [start, end)
         // Un booking [S1, E1) y [S2, E2) se solapan si (S1 < E2) AND (E1 > S2)
@@ -96,6 +102,11 @@ router.put('/bookings/:id', (req, res) => {
 
     if (!room_id || !client_name || !start_date || !end_date || !status) {
         return res.status(400).json({ error: "Faltan campos requeridos." });
+    }
+
+    // FIX: Validar price_per_night
+    if (typeof price_per_night !== 'number' || price_per_night <= 0) {
+        return res.status(400).json({ error: "El precio por noche debe ser un número positivo." });
     }
 
     // Lógica de validación de superposición robusta para intervalos [start, end)
@@ -299,8 +310,8 @@ router.post('/invoices/generate/:bookingId', (req, res) => {
             // 2. Calcular el total (la lógica ya la tenemos en el frontend, aquí la replicamos en backend por seguridad/integridad)
             const startDate = new Date(booking.start_date + 'T00:00:00Z');
             const endDate = new Date(booking.end_date + 'T00:00:00Z');
-            // Usamos Math.round para consistencia con el frontend si las fechas son días completos
-            const durationDays = Math.round(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
+            // FIX: Usamos Math.floor para consistencia con el frontend y cálculo de noches
+            const durationDays = Math.floor(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
             const stayCost = durationDays * booking.price_per_night;
             const consumptionsTotal = consumptions.reduce((sum, item) => sum + item.amount, 0);
             const totalAmount = stayCost + consumptionsTotal; // El total antes de IVA, si se aplica luego

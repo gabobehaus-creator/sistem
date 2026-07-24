@@ -5,6 +5,7 @@ class BookingModal extends HTMLElement {
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; // Este es el precio base de la habitacion
         this.currentPricePerNight = 0; // Este es el precio de la reserva editable
+        this.consumptionsTotal = 0; // NUEVO: Para llevar el total de consumos
 
         this.shadow.innerHTML = `
             <style>
@@ -146,9 +147,6 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('statusSelect').value = 'occupied';
         this.handleSave();
     }
-// ... dentro de la clase BookingModal ...
-
-    // ... dentro de la clase BookingModal ...
 
     async handleCheckOut() {
         // Asegúrate de que tenemos un ID de reserva válido O que se va a crear uno nuevo en handleSave
@@ -187,8 +185,6 @@ class BookingModal extends HTMLElement {
         }
     }
 
-// ...
-
     async generateInvoice(bookingId, paymentMethod) {
         try {
             const response = await fetch(`/api/invoices/generate/${bookingId}`, {
@@ -206,7 +202,8 @@ class BookingModal extends HTMLElement {
                 this.closeModal();
             } else {
                 const errorData = await response.json();
-                alert(`Facturación completada con advertencias: ${errorData.error}`);
+                // FIX: Mensaje de error más claro
+                alert(`Error al generar factura: ${errorData.error}`);
             }
         } catch (error) {
             console.error("Error generating invoice:", error);
@@ -230,6 +227,7 @@ class BookingModal extends HTMLElement {
         // Usamos el precio de la reserva si existe, sino el precio base de la habitacion
         this.currentPricePerNight = data.pricePerNight || this.currentRoomPrice;
         this.shadow.getElementById('pricePerNight').value = this.currentPricePerNight.toFixed(2);
+        this.consumptionsTotal = 0; // Resetear consumos al abrir el modal
 
 
         // Ocultar todos los botones de acción dinámicos por defecto
@@ -266,9 +264,9 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('bookingForm').reset();
         //this.currentBookingId = null;
         this.shadow.getElementById('consumptionsList').innerHTML = '';
-    }
+        this.consumptionsTotal = 0; // Resetear el total de consumos
 
-    // ... dentro de la clase BookingModal ...
+    }
 
     async handleSave(e) {
         if (e) e.preventDefault();
@@ -282,10 +280,14 @@ class BookingModal extends HTMLElement {
             price_per_night: parseFloat(this.shadow.getElementById('pricePerNight').value)
         };
 
+        // FIX: Validacion y lanzamiento de error para que handleCheckOut lo capture
         if (!bookingData.client_name || !bookingData.start_date || !bookingData.end_date) {
             alert("Por favor complete todos los campos requeridos (Nombre, Fecha Inicio, Fecha Fin).");
-            // Si validamos aquí, devolvemos null o lanzamos un error si es necesario en el flujo de checkout.
-            if (e) return null; 
+            throw new Error("Faltan campos requeridos para la reserva."); 
+        }
+        if (isNaN(bookingData.price_per_night) || bookingData.price_per_night <= 0) {
+            alert("El precio por noche debe ser un número positivo.");
+            throw new Error("Precio por noche inválido.");
         }
 
         const method = this.currentBookingId ? 'PUT' : 'POST';
@@ -327,8 +329,6 @@ class BookingModal extends HTMLElement {
         }
     }
 
-// ...
-
     async handleDelete() {
         if (!this.currentBookingId || !confirm("¿Está seguro de que desea eliminar esta reserva? Esta acción no se puede deshacer.")) return;
 
@@ -357,14 +357,17 @@ class BookingModal extends HTMLElement {
         } else {
             console.error("Error fetching consumptions");
             this.shadow.getElementById('consumptionsList').innerHTML = '<li>Error al cargar consumos.</li>';
+            this.consumptionsTotal = 0; // Resetear si hay error
+
         }
-        this.calculateTotals();
+        // La llamada a calculateTotals() ya está dentro de renderConsumptions, que es quien tiene el total real
+        //this.calculateTotals(); 
     }
 
      renderConsumptions(consumptions) {
         const list = this.shadow.getElementById('consumptionsList');
         list.innerHTML = '';
-        let consumptionsTotal = 0; // Acumulador
+        let currentConsumptionsTotal = 0; // Acumulador local
 
         if (consumptions.length === 0) {
             list.innerHTML = '<p>No hay consumos registrados para esta estadía.</p>';
@@ -377,15 +380,17 @@ class BookingModal extends HTMLElement {
                     <span>$${item.amount.toFixed(2)}</span>
                 `;
                 list.appendChild(div);
-                consumptionsTotal += item.amount; // Sumamos al total
+                currentConsumptionsTotal += item.amount; // Sumamos al total
             });
         }
-        // CLAVE: Llama a la función que actualiza la UI del total, pasándole el total calculado
-        this.updateTotalAmount(consumptionsTotal);
+        // FIX: Actualiza la propiedad de instancia y luego llama a updateTotalAmount
+        this.consumptionsTotal = currentConsumptionsTotal;
+        this.updateTotalAmount(); // Llama sin argumentos, usará this.consumptionsTotal
+
     }
 
     
-        calculateTotals() {
+    calculateTotals() {
         // Obtenemos los valores de los inputs. El formato debe ser YYYY-MM-DD (TEXTO)
         const startDateValue = this.shadow.getElementById('startDate').value;
         const endDateValue = this.shadow.getElementById('endDate').value;
@@ -402,9 +407,8 @@ class BookingModal extends HTMLElement {
 
             if (end > start) {
                 const diffTime = Math.abs(end - start);
-                // Calculamos las noches. Usamos Math.round() porque la diferencia de días
-                // debería ser un número entero si las fechas son solo YYYY-MM-DD.
-                durationDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                // FIX: Usamos Math.floor() para las noches para evitar redondeos inesperados.
+                durationDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             }
         }
 
@@ -414,14 +418,11 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('stayDuration').textContent = `${durationDays} noches`;
         this.shadow.getElementById('stayCost').textContent = stayCost.toFixed(2);
         
-        // Llamamos a esta función para asegurarnos de que el total final se actualice, 
-        // sumando cualquier consumo que ya esté listado.
-        // Si no hay consumos cargados, consumptionsTotal será 0 por defecto.
-        //this.updateTotalAmount(); 
+        // FIX: Llamamos a updateTotalAmount para actualizar el total final, usando el valor de instancia
+        this.updateTotalAmount();
+
     }
 
-
-    // ... dentro de la clase BookingModal ...
 
     async handleAddConsumption() {
         const descriptionInput = this.shadow.getElementById('consumptionDescription');
@@ -457,14 +458,13 @@ class BookingModal extends HTMLElement {
         }
     }
     
-    // Esta funcion es llamada por fetchConsumptions -> renderConsumptions para actualizar el total final
-      // Esta funcion recibe ahora el total de consumos desde renderConsumptions
-    updateTotalAmount(consumptionsTotal = 0) {
+    // Esta funcion ahora no recibe 'consumptionsTotal', lo obtiene de 'this.consumptionsTotal'
+    updateTotalAmount() {
          const stayCostText = this.shadow.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
          const stayCost = parseFloat(stayCostText);
          
-         // Ahora suma correctamente ambos valores
-         const total = stayCost + consumptionsTotal;
+         // Ahora suma correctamente ambos valores usando la propiedad de instancia
+         const total = stayCost + this.consumptionsTotal;
          this.shadow.getElementById('totalAmountDisplay').textContent = total.toFixed(2);
     }
 }
