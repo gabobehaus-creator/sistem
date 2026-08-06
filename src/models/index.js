@@ -18,7 +18,7 @@ const Booking = sequelize.define('Booking', {
     
     // Mantenemos client_name para clientes individuales o el nombre del contacto
     client_name: { type: DataTypes.TEXT, allowNull: false }, 
-    source_channel: { type: DataTypes.TEXT, allowNull: true, defaultValue: 'booking', validate: { isIn: [['booking', 'expedia', 'whatsapp', 'walk-in', 'referidos']] } },
+    source_channel: { type: DataTypes.TEXT, allowNull: true, defaultValue: 'walking-in', validate: { isIn: [['booking', 'expedia', 'whatsapp', 'walking-in', 'referidos']] } },
     // client_id ahora es OPCIONAL (allowNull: true por defecto)
     client_id: { 
         type: DataTypes.INTEGER,
@@ -31,9 +31,9 @@ const Booking = sequelize.define('Booking', {
 
     start_date: { type: DataTypes.TEXT, allowNull: false },
     end_date: { type: DataTypes.TEXT, allowNull: false },
-    status: { type: DataTypes.TEXT, allowNull: false },
+    status: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [['liberated', 'reserved', 'occupied', 'checked-out', 'paid', 'invoiced', 'blocked']] } },
     price_per_night: { type: DataTypes.REAL, allowNull: false, defaultValue: 0.0 },
-    email: { type: DataTypes.TEXT, allowNull: true },
+    email: { type: DataTypes.TEXT, allowNull: true, validate: { isEmail: true } },
     notes: { type: DataTypes.TEXT, allowNull: true },
     time_slot: { // Nuevo campo para la franja horaria
         type: DataTypes.TEXT,
@@ -65,7 +65,7 @@ const User = sequelize.define('User', {
         allowNull: false,
         defaultValue: 'operador', // Rol por defecto
         validate: {
-            isIn: [['admin', 'supervisor', 'operador']] // Roles permitidos
+            isIn: [['admin', 'supervisor', 'operador', 'limpieza']] // Roles permitidos
         }
     },
     is_active: { // Para el "Baja" lógica del ABM (borrado suave)
@@ -181,4 +181,3 @@ module.exports = {
     MinibarProduct,         // Nuevo modelo
     MinibarConsumption      // Nuevo modelo
 };
-

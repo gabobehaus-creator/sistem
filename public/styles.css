@@ -107,7 +107,7 @@ html.dark-mode td {
     border-color: #555;
 }
 html.dark-mode tr:nth-child(even) {
-    background-color: var(--card-bg); 
+    background-color: #3a3f4a; 
 }
 
 /* Input and Select elements */

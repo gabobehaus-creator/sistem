@@ -139,6 +139,66 @@ class MonthlyOccupancyReport extends HTMLElement {
                 .report-content {
                     margin-top: 20px;
                 }
+                /* Dark mode adjustments */
+                :host-context(html.dark-mode) {
+                    background-color: #282c34;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+                }
+                :host-context(html.dark-mode) .header h2 {
+                    color: #e0e0e0;
+                }
+                :host-context(html.dark-mode) .year-selector label {
+                    color: #ccc;
+                }
+                :host-context(html.dark-mode) .year-selector select {
+                    background-color: #4a4f59;
+                    color: #e0e0e0;
+                    border-color: #666;
+                }
+                :host-context(html.dark-mode) table {
+                    background-color: #3a3f4a;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                }
+                :host-context(html.dark-mode) th, :host-context(html.dark-mode) td {
+                    border-color: #555;
+                    color: #e0e0e0;
+                }
+                :host-context(html.dark-mode) th {
+                    background-color: var(--primary-color); /* Use primary color from global CSS */
+                    color: white;
+                }
+                :host-context(html.dark-mode) tr:nth-child(even) {
+                    background-color: #3a3f4a; /* Darker even rows */
+                }
+                :host-context(html.dark-mode) tr:hover {
+                    background-color: #4a4f59;
+                }
+                :host-context(html.dark-mode) tfoot tr {
+                    background-color: #2b3038;
+                    color: #f0f0f0;
+                }
+                :host-context(html.dark-mode) .summary {
+                    background-color: #2b3038;
+                    border-left-color: var(--primary-color);
+                }
+                :host-context(html.dark-mode) .summary p {
+                    color: #f0f0f0;
+                }
+                :host-context(html.dark-mode) .chart-container {
+                    background-color: #3a3f4a;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                }
+                :host-context(html.dark-mode) .message.error {
+                    background-color: #5b3636;
+                    color: #ffcccc;
+                    border-color: #f44336;
+                }
+                :host-context(html.dark-mode) .report-controls button {
+                    background-color: #388e3c; /* Darker green for dark mode */
+                }
+                :host-context(html.dark-mode) .report-controls button:hover {
+                    background-color: #2e7d32;
+                }
             </style>
             <div class="header">
                 <h2>Reporte de Ocupación Mensual</h2>
@@ -307,14 +367,14 @@ class MonthlyOccupancyReport extends HTMLElement {
                 <tr>
                     <td><strong>Totales / Promedio Anual</strong></td>
                     <td><strong>${summary.total_occupied_nights.toFixed(2)}</strong></td>
-                    <td><strong>${summary.total_available_nights}</strong></td>
+                    <td><strong>${summary.total_available_nights.toFixed(2)}</strong></td>
                     <td><strong>${summary.overall_occupancy_percentage.toFixed(2)}%</strong></td>
                 </tr>
             `;
 
             annualSummaryDiv.innerHTML = `
                 <p><strong>Total Noches Ocupadas (Año):</strong> ${summary.total_occupied_nights.toFixed(2)}</p>
-                <p><strong>Total Noches Disponibles (Año):</strong> ${summary.total_available_nights}</p>
+                <p><strong>Total Noches Disponibles (Año):</strong> ${summary.total_available_nights.toFixed(2)}</p>
                 <p><strong>Promedio Noches Ocupadas por Mes:</strong> ${summary.average_occupied_nights_per_month.toFixed(2)}</p>
                 <p><strong>% Ocupación Anual:</strong> ${summary.overall_occupancy_percentage.toFixed(2)}%</p>
             `;
@@ -392,7 +452,7 @@ class MonthlyOccupancyReport extends HTMLElement {
             ws_data.push([
                 monthData.month,
                 parseFloat(monthData.occupied_nights.toFixed(2)),
-                monthData.total_available_nights,
+                parseFloat(monthData.total_available_nights.toFixed(2)),
                 `${monthData.occupancy_percentage.toFixed(2)}%`
             ]);
         });
@@ -401,11 +461,11 @@ class MonthlyOccupancyReport extends HTMLElement {
         const summary = this.reportData.annual_summary;
         if (summary) {
             ws_data.push([]); // Empty row for spacing
-            ws_data.push(['Totales / Promedio Anual', parseFloat(summary.total_occupied_nights.toFixed(2)), summary.total_available_nights, `${summary.overall_occupancy_percentage.toFixed(2)}%`]);
+            ws_data.push(['Totales / Promedio Anual', parseFloat(summary.total_occupied_nights.toFixed(2)), parseFloat(summary.total_available_nights.toFixed(2)), `${summary.overall_occupancy_percentage.toFixed(2)}%`]);
             ws_data.push([]);
             ws_data.push([`Resumen Anual ${this.currentYear}`]);
             ws_data.push(['Total Noches Ocupadas (Año)', parseFloat(summary.total_occupied_nights.toFixed(2))]);
-            ws_data.push(['Total Noches Disponibles (Año)', summary.total_available_nights]);
+            ws_data.push(['Total Noches Disponibles (Año)', parseFloat(summary.total_available_nights.toFixed(2))]);
             ws_data.push(['Promedio Noches Ocupadas por Mes', parseFloat(summary.average_occupied_nights_per_month.toFixed(2))]);
             ws_data.push(['% Ocupación Anual', `${summary.overall_occupancy_percentage.toFixed(2)}%`]);
         }
@@ -450,7 +510,7 @@ class MonthlyOccupancyReport extends HTMLElement {
         };
 
         html2pdf().from(pdfWrapper).set(options).save().then(() => {
-            this.showMessage('Reporte PDF generado exitosamente.', 'success');
+            this.showMessage('Reporte PDF generado exitamente.', 'success');
         }).catch(error => {
             console.error("Error generating PDF:", error);
             this.showMessage(`Error al generar el reporte PDF: ${error.message}`, 'error');

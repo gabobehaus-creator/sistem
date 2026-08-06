@@ -1,6 +1,6 @@
 // src/utils/seeder.js
 const bcrypt = require('bcrypt');
-const { Room, User, Employee, sequelize } = require('../models');
+const { Room, User, Employee, Client, MinibarProduct, sequelize } = require('../models');
 
 async function seedDatabase() {
     // Usamos { alter: true } en desarrollo para actualizar el esquema sin perder datos
@@ -40,21 +40,21 @@ async function seedDatabase() {
     }
 
     // Seed Users
-    await User.truncate(); // Limpiamos la tabla de usuarios para evitar duplicados en desarrollo
+    // await User.truncate(); // Solo usar si se quiere borrar y recrear usuarios en cada `seed`
     const userCount = await User.count();
     if (userCount === 0) {
         const passwordTextoPlano = 'Behaus2026';
         const hashedPassword = await bcrypt.hash(passwordTextoPlano, 10);
         await User.bulkCreate([
-            { username: 'gustavo.funcia@behaus.com', password: hashedPassword, role: 'admin' },
-            { username: 'gabriel.fernandez@behaus.com', password: hashedPassword, role: 'admin' },
-            { username: 'nicolas.perone@behaus.com', password: hashedPassword, role: 'operador' },
-            { username: 'ariel.jofre@behaus.com', password: hashedPassword, role: 'operador' },
-            { username: 'martin.guzman@behaus.com', password: hashedPassword, role: 'operador' },
-            { username: 'jose.basconcelo@behaus.com', password: hashedPassword, role: 'operador' },
-            { username: 'giselle.moreno@behaus.com', password: hashedPassword, role: 'limpieza' },
-            { username: 'dalma.orozco@behaus.com', password: hashedPassword, role: 'limpieza' },
-            { username: 'micaela.cabrera@behaus.com', password: hashedPassword, role: 'limpieza' },          
+            { username: 'gustavo.funcia@behaus.com', email: 'gustavo.funcia@behaus.com', password: hashedPassword, role: 'admin' },
+            { username: 'gabriel.fernandez@behaus.com', email: 'gabriel.fernandez@behaus.com', password: hashedPassword, role: 'admin' },
+            { username: 'nicolas.perone@behaus.com', email: 'nicolas.perone@behaus.com', password: hashedPassword, role: 'operador' },
+            { username: 'ariel.jofre@behaus.com', email: 'ariel.jofre@behaus.com', password: hashedPassword, role: 'operador' },
+            { username: 'martin.guzman@behaus.com', email: 'martin.guzman@behaus.com', password: hashedPassword, role: 'operador' },
+            { username: 'jose.basconcelo@behaus.com', email: 'jose.basconcelo@behaus.com', password: hashedPassword, role: 'operador' },
+            { username: 'giselle.moreno@behaus.com', email: 'giselle.moreno@behaus.com', password: hashedPassword, role: 'limpieza' },
+            { username: 'dalma.orozco@behaus.com', email: 'dalma.orozco@behaus.com', password: hashedPassword, role: 'limpieza' },
+            { username: 'micaela.cabrera@behaus.com', email: 'micaela.cabrera@behaus.com', password: hashedPassword, role: 'limpieza' }          
             
         ]);
         console.log("Usuarios iniciales insertados.");
@@ -69,6 +69,30 @@ async function seedDatabase() {
         ]);
         console.log("Empleados iniciales insertados.");
     }
+
+    // Seed Clients (Companies)
+    const clientCount = await Client.count();
+    if (clientCount === 0) {
+        await Client.bulkCreate([
+            { name: 'Tech Solutions S.A.', cuit_cuil: '30-71234567-8', invoice_type: 'A' },
+            { name: 'Global Travel SRL', cuit_cuil: '20-56789012-3', invoice_type: 'B' },
+            { name: 'Viajes Locos LTDA.', cuit_cuil: '33-98765432-1', invoice_type: 'T' }
+        ]);
+        console.log("Clientes iniciales insertados.");
+    }
+
+    // Seed Minibar Products
+    const minibarProductCount = await MinibarProduct.count();
+    if (minibarProductCount === 0) {
+        await MinibarProduct.bulkCreate([
+            { name: 'Agua Mineral', price: 1.50, quantity: 50 },
+            { name: 'Coca Cola', price: 2.00, quantity: 40 },
+            { name: 'Cerveza Patagonia', price: 3.50, quantity: 30 },
+            { name: 'Chocolate Milka', price: 2.50, quantity: 25 }
+        ]);
+        console.log("Productos de minibar iniciales insertados.");
+    }
+
    console.log("Seed function finished execution.");
 }
 

@@ -4,7 +4,7 @@ class BookingModal extends HTMLElement {
         this.shadow = this.attachShadow({ mode: 'open' });
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; 
-        this.checkout = false;
+        this.checkout = false; 
 
         this.shadow.innerHTML = `
             <style>
@@ -14,28 +14,80 @@ class BookingModal extends HTMLElement {
                     justify-content: center; align-items: center; z-index: 1000;
                 }
                 .modal-content {
-                    background: white; padding: 30px; border-radius: 8px;
-                    width: 500px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); 
+                    background: var(--card-bg); padding: 30px; border-radius: 8px;
+                    width: 500px; box-shadow: var(--shadow); 
                     max-height: 80vh; overflow-y: auto;
+                    color: var(--text-color);
                 }
                 .modal-header {
                     display: flex; justify-content: space-between;
-                    align-items: center; border-bottom: 1px solid #eee;
+                    align-items: center; border-bottom: 1px solid var(--text-color);
                     padding-bottom: 10px; margin-bottom: 20px;
                 }
+                .modal-header h3 { color: var(--primary-color); }
                 .close-button {
                     background: none; border: none; font-size: 24px; cursor: pointer;
+                    color: var(--text-color);
                 }
-                .button-group { display: flex; justify-content: space-between; margin-top: 20px; }
-                button { padding: 10px 15px; border: none; cursor: pointer; }
-                .btn-save { background-color: #0056b3; color: white; }
+                .button-group { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; flex-wrap: wrap;}
+                button { padding: 10px 15px; border: none; cursor: pointer; border-radius: 4px; font-size: 0.9em; }
+                .btn-save { background-color: var(--primary-color); color: white; }
+                .btn-save:hover { background-color: #004494; }
                 .btn-delete { background-color: #f44336; color: white; }
+                .btn-delete:hover { background-color: #c0392b; }
                 .btn-cancel { background-color: #ccc; color: black; }
+                .btn-cancel:hover { background-color: #bbb; }
                 .btn-checkin { background-color: #ff9800; color: white; }
+                .btn-checkin:hover { background-color: #e68a00; }
                 .btn-checkout { background-color: #607d8b; color: white; }
+                .btn-checkout:hover { background-color: #4a6572; }
                 .btn-cobrar { background-color: #4caf50; color: white; }
+                .btn-cobrar:hover { background-color: #43a047; }
                 .btn-facturar { background-color: #2196f3; color: white; }
-                svg { width: 10%; height: 10%; }
+                .btn-facturar:hover { background-color: #1976d2; }
+                
+                /* Dark Mode overrides for buttons */
+                :host-context(html.dark-mode) .btn-save { background-color: var(--primary-color); }
+                :host-context(html.dark-mode) .btn-save:hover { background-color: #6b98d2; }
+                :host-context(html.dark-mode) .btn-delete { background-color: #b71c1c; }
+                :host-context(html.dark-mode) .btn-delete:hover { background-color: #921515; }
+                :host-context(html.dark-mode) .btn-cancel { background-color: #666; color: white; }
+                :host-context(html.dark-mode) .btn-cancel:hover { background-color: #555; }
+                :host-context(html.dark-mode) .btn-checkin { background-color: #d35400; }
+                :host-context(html.dark-mode) .btn-checkin:hover { background-color: #bb4d00; }
+                :host-context(html.dark-mode) .btn-checkout { background-color: #4a6572; }
+                :host-context(html.dark-mode) .btn-checkout:hover { background-color: #3e5663; }
+                :host-context(html.dark-mode) .btn-cobrar { background-color: #388e3c; }
+                :host-context(html.dark-mode) .btn-cobrar:hover { background-color: #2e7d32; }
+                :host-context(html.dark-mode) .btn-facturar { background-color: #1976d2; }
+                :host-context(html.dark-mode) .btn-facturar:hover { background-color: #1565c0; }
+
+                /* Dialog styles */
+                dialog {
+                    border: none;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: var(--shadow);
+                    background-color: var(--card-bg);
+                    color: var(--text-color);
+                }
+                dialog::backdrop {
+                    background: rgba(0, 0, 0, 0.5);
+                }
+                dialog button {
+                    margin-top: 10px;
+                    margin-right: 10px;
+                }
+                dialog #confirmBtn { background-color: #4CAF50; color: white; }
+                dialog #confirmBtn:hover { background-color: #43a047; }
+                dialog [value="cancel"] { background-color: #ccc; color: black; }
+                dialog [value="cancel"]:hover { background-color: #bbb; }
+
+
+                /* SVG icons styling for dark mode */
+                :host-context(html.dark-mode) svg {
+                    fill: var(--text-color);
+                }
             </style>
             <div class="modal-overlay" id="bookingModalOverlay">
                 <div class="modal-content">
@@ -91,7 +143,6 @@ class BookingModal extends HTMLElement {
     }
 
     connectedCallback() {
-        // Event listeners locales del shell
         this.shadow.getElementById('closeModal').addEventListener('click', () => this.closeModal());
         this.shadow.getElementById('cancelButton').addEventListener('click', () => this.closeModal());
         this.shadow.getElementById('deleteButton').addEventListener('click', () => this.handleDelete());
@@ -101,25 +152,17 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('facturarButton').addEventListener('click', () => this.handleFacturar());
         this.shadow.getElementById('saveButton').addEventListener('click', () => this.handleSave());
         
-        // Escuchar eventos globales del dashboard
         document.addEventListener('open-booking-modal', (e) => this.openModal(e.detail));
         
-
-
-
-
-
-
-        // Escuchar eventos de los subcomponentes
         this.shadow.getElementById('detailsForm').addEventListener('details-changed', () => this.syncDetailsToBilling());
-        this.addEventListener('get-booking-id', (e) => e.detail.callback(this.currentBookingId)); // Maneja la petición de ID desde el panel de consumos
+        this.shadow.getElementById('minibarConsumptionPanel').addEventListener('minibar-consumption-changed', (e) => this.shadow.getElementById('billingPanel').updateTotalAmount(this.shadow.getElementById('billingPanel').consumptionsTotal, e.detail.total));
     }
     
     // Sincroniza datos del formulario principal al panel de facturación
     syncDetailsToBilling() {
         const details = this.shadow.getElementById('detailsForm').getDetails();
         this.shadow.getElementById('billingPanel').calculateTotals(
-            details.start_date, details.end_date, details.price_per_night, 0, details.time_slot
+            details.start_date, details.end_date, details.price_per_night, this.shadow.getElementById('minibarConsumptionPanel').getMinibarTotal(), details.time_slot
         );
     }
 
@@ -136,7 +179,7 @@ class BookingModal extends HTMLElement {
         if (data.status === 'occupied' || data.status === 'checked-out' || data.status === 'paid' || data.status === 'invoiced') {
             const billingPanel = this.shadow.getElementById('billingPanel');
             if (billingPanel && typeof billingPanel.fetchConsumptions === 'function') {
-                billingPanel.fetchConsumptions(this.currentBookingId);
+                billingPanel.setBookingId(this.currentBookingId);
             } else {
                 console.warn("Billing panel not ready or missing fetchConsumptions method.");
             }
@@ -359,7 +402,7 @@ class BookingModal extends HTMLElement {
         const paymentMethod = billingPanel.getPaymentMethod();
         const total = billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent;
 
-        if (confirm(`El total a pagar es $${total.toFixed(2)}. ¿Confirmar Check-Out y generar factura?`)) {
+        if (confirm(`El total a pagar es $${total}. ¿Confirmar Check-Out y generar factura?`)) {
             // 1. Establecer el estado a checked-out en el subcomponente
             this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'checked-out';
 

@@ -1,5 +1,4 @@
 // src/auth.js
-// const db = require('./database'); // ELIMINAR
 const bcrypt = require('bcrypt'); 
 const { User } = require('./models'); // USAMOS EL MODELO
 

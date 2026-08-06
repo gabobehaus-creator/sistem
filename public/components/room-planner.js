@@ -424,7 +424,8 @@ class RoomPlanner extends HTMLElement {
             bookingId: existingBooking ? existingBooking.id : null, // null para nueva reserva
             notes: existingBooking ? existingBooking.notes : '', // Notas de la reserva existente o vacío
             clientEmail: existingBooking ? existingBooking.email : '', // Pass email if exists
-            clientId: existingBooking ? existingBooking.client_id : null // Pass client ID for company dropdown
+            clientId: existingBooking ? existingBooking.client_id : null, // Pass client ID for company dropdown
+            source_channel: existingBooking ? existingBooking.source_channel : ''
         };
 
         document.dispatchEvent(new CustomEvent('open-booking-modal', {
@@ -447,4 +448,3 @@ class RoomPlanner extends HTMLElement {
     }
 } 
 customElements.define('room-planner', RoomPlanner);
-

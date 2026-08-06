@@ -51,7 +51,7 @@ class MinibarConsumptionPanel extends HTMLElement {
 
     async fetchMinibarProducts() {
         try {
-            const response = await fetch('/api/minibar-products');
+            const response = await fetch('/api/minibar/products');
             if (response.ok) {
                 const data = await response.json();
                 this.minibarProducts = data.data;
