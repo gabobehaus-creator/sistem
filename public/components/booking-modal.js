@@ -1,9 +1,12 @@
+import './bed-icon.js'; // Ensure bed-icon component is loaded
+
 class BookingModal extends HTMLElement {
     constructor() {
         super();
         this.shadow = this.attachShadow({ mode: 'open' });
         this.currentBookingId = null; 
         this.currentRoomPrice = 0; 
+        this.roomCategory = 'standard'; // New property to store room category
         this.checkout = false; 
 
         this.shadow.innerHTML = `
@@ -94,14 +97,9 @@ class BookingModal extends HTMLElement {
                     <div class="modal-header">
                         <h3 id="modalTitle">Detalle de Reserva</h3>
                         
-                        <div class="bed-icons" style="width: 60%; text-align: right;">
-                         <svg viewBox="0 0 24 24" fill="gray">
-       <path d="M20 10V7c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v3c-1.1 0-2 .9-2 2v5h1.33L3 19h1l.67-2h12.67l.66 2h1l.67-2H22v-5c0-1.1-.9-2-2-2zm-2 0h-5V7h5v3zM6 7h5v3H6V7zm-2 5v3h16v-3H4z"/>
-      </svg>
-      <svg viewBox="0 0 24 24" fill="gray">
-       <path d="M19 7h-8V3H3v18h2v-4h14v4h2v-8c0-1.1-.9-2-2-2zM5 5h4v4H5V5zm14 8H5v-2h14v2z"/>
-      </svg>
-      </div>
+                        <div class="bed-icons" style="width: 60%; text-align: right;" id="roomCategoryIcons">
+                             <!-- Bed icons will be rendered dynamically here -->
+                        </div>
                         <button class="close-button" id="closeModal">&times;</button>
                     </div>
                     <form id="bookingForm">
@@ -169,9 +167,12 @@ class BookingModal extends HTMLElement {
     async openModal(data) {
         this.currentBookingId = data.bookingId;
         this.currentRoomPrice = data.roomPrice || 0;
-        
+        this.roomCategory = data.roomCategory || 'standard'; // Store room category
+
+        // Render bed icons based on room category
+        this.renderBedIcons();
+
         // Pasar datos iniciales al subcomponente de detalles
-        // Pasar datos iniciales al subcomponente de detalles, incluyendo timeSlot
         this.shadow.getElementById('detailsForm').setDetails(data, this.currentRoomPrice);
 
         // Actualizar visibilidad de botones y panel de facturación
@@ -197,6 +198,45 @@ class BookingModal extends HTMLElement {
         this.shadow.getElementById('bookingModalOverlay').style.display = 'flex';
     }
     
+    renderBedIcons() {
+        const iconsContainer = this.shadow.getElementById('roomCategoryIcons');
+        iconsContainer.innerHTML = ''; // Clear previous icons
+
+        let iconType = 'single'; // Default icon type
+        let iconColor = 'gray'; // Default icon color
+        let numIcons = 1; // Default number of icons
+
+        switch(this.roomCategory) {
+            case 'executive':
+                iconType = 'double';
+                iconColor = 'blue';
+                break;
+            case 'studio':
+                iconType = 'single';
+                iconColor = 'green';
+                break;
+            case 'loft':
+                iconType = 'double'; // Loft could have a special icon, or be treated as double
+                iconColor = 'purple';
+                break;
+            case 'family':
+                iconType = 'single'; // For family, render multiple singles to represent capacity
+                iconColor = 'red';
+                numIcons = 3; // Example: 3 single beds for a family room
+                break;
+            default:
+                iconType = 'single';
+                iconColor = 'gray';
+        }
+
+        for (let i = 0; i < numIcons; i++) {
+            const bedIcon = document.createElement('bed-icon');
+            bedIcon.setAttribute('type', iconType);
+            bedIcon.setAttribute('color', iconColor);
+            iconsContainer.appendChild(bedIcon);
+        }
+    }
+
     closeModal() {
         this.shadow.getElementById('bookingModalOverlay').style.display = 'none';
         // Emitir evento personalizado para que el padre (dashboard) refresque datos
@@ -289,8 +329,8 @@ class BookingModal extends HTMLElement {
 
             if (response.ok) {
                 const result = await response.json();
-                if (method === 'POST' && result.id) {
-                    this.currentBookingId = result.id;
+                if (method === 'POST' && result.data && result.data.id) {
+                    this.currentBookingId = result.data.id;
                 }
                 document.dispatchEvent(new CustomEvent('booking-saved'));
                 this.closeModal(); 
@@ -318,40 +358,59 @@ class BookingModal extends HTMLElement {
              return;
         }
 
-              const dialog = this.shadow.getElementById('myDialog');
-            const confirmBtn = this.shadow.getElementById('confirmBtn');
-                dialog.showModal();
-                confirmBtn.onclick = () => {
-                    const checkbox = this.shadow.getElementById('checkOption');
-                    let lateAdd = 0;
-                    if (checkbox.checked) {
-                        const price = this.shadow.getElementById('detailsForm').getDetails();
-                        lateAdd += (price.price_per_night / 2);
-                    }   
+        const dialog = this.shadow.getElementById('myDialog');
+        const confirmBtn = this.shadow.getElementById('confirmBtn');
+        dialog.showModal();
+        confirmBtn.onclick = async () => {
+            const checkbox = this.shadow.getElementById('checkOption');
+            let lateAdd = 0;
+            // Logic for late checkout is now handled here, before status update.
+            if (checkbox.checked) {
+                const price = this.shadow.getElementById('detailsForm').getDetails();
+                lateAdd += (price.price_per_night / 2);
+            }
 
+            const billingPanel = this.shadow.getElementById('billingPanel');
+            const paymentMethod = billingPanel.getPaymentMethod();
+            const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
+            // Ensure all totals are up-to-date BEFORE confirming total.
+            const currentConsumptionsTotal = billingPanel.getTotalConsumptions();
+            const currentMinibarTotal = minibarConsumptionPanel.getMinibarTotal();
+            const stayCostText = billingPanel.shadowRoot.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
+            const stayCost = parseFloat(stayCostText);
 
-                    const billingPanel = this.shadow.getElementById('billingPanel');
-                    const paymentMethod = billingPanel.getPaymentMethod();
-                    const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
-                    const total = parseFloat(billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent) + lateAdd + minibarConsumptionPanel.getMinibarTotal();
+            const totalBeforeLateCheckout = stayCost + currentConsumptionsTotal + currentMinibarTotal;
+            const finalTotal = totalBeforeLateCheckout + lateAdd;
 
-                    if (confirm(`El total a pagar es $${total.toFixed(2)}. ¿Confirmar el cobro?`)) {
-                        // Establecer el estado a 'paid' en el subcomponente
-                        this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'paid';
-                        try {
-                            // Guardar/actualizar la reserva.
-                            this.handleSave('paid');
-
-                        } catch (error) {
-                            console.error("Error durante el cobro:", error);
-                            alert("Ocurrió un error crítico durante el cobro: " + error.message);
-                        }
+            if (confirm(`El total a pagar es $${finalTotal.toFixed(2)}. ¿Confirmar el cobro?`)) {
+                // If late checkout is applied, add it as an explicit consumption for record-keeping
+                // This ensures the billing panel's total is accurate when invoice is generated.
+                if (checkbox.checked) {
+                    try {
+                        await fetch('/api/consumptions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ booking_id: this.currentBookingId, description: 'Late Checkout', amount: lateAdd, date: new Date().toISOString().split('T')[0] })
+                        });
+                         // Re-fetch consumptions in billing panel to update its internal total and display
+                        await billingPanel.fetchConsumptions(this.currentBookingId);
+                    } catch (error) {
+                        console.error('Error adding late checkout consumption:', error);
+                        alert('Advertencia: No se pudo registrar el cargo por late checkout.');
                     }
+                }
 
+                // Set the status to 'paid' in the subcomponent and save
+                this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'paid';
+                try {
+                    await this.handleSave('paid');
 
-
-         }
-
+                } catch (error) {
+                    console.error("Error durante el cobro:", error);
+                    alert("Ocurrió un error crítico durante el cobro: " + error.message);
+                }
+            }
+        };
     }
 
     async handleFacturar() {
@@ -363,46 +422,59 @@ class BookingModal extends HTMLElement {
         const billingPanel = this.shadow.getElementById('billingPanel');
         const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
         const paymentMethod = billingPanel.getPaymentMethod();
-        const total = parseFloat(billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent) + minibarConsumptionPanel.getMinibarTotal();
 
-        if (confirm(`¿Confirma generar factura?`)) {
-            // 1. Establecer el estado a checked-out en el subcomponente
+        // Recalculate totals to ensure accuracy before confirmation
+        const currentConsumptionsTotal = billingPanel.getTotalConsumptions();
+        const currentMinibarTotal = minibarConsumptionPanel.getMinibarTotal();
+        const stayCostText = billingPanel.shadowRoot.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
+        const stayCost = parseFloat(stayCostText);
+        const total = stayCost + currentConsumptionsTotal + currentMinibarTotal;
+
+        if (confirm(`¿Confirma generar factura por un total de $${total.toFixed(2)}?`)) {
+            // 1. Establecer el estado a 'invoiced' en el subcomponente
             this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'invoiced';
             
             try {
-                // 2. Guardar/actualizar la reserva.
-               await this.handleSave(); 
+                // 2. Guardar/actualizar la reserva (this will trigger the backend booking update).
+                await this.handleSave('invoiced'); 
                 
-                // 3. Generamos la factura.
+                // 3. Generamos la factura. This will also update the room status to 'dirty' if applicable.
                 await this.generateInvoice(this.currentBookingId, paymentMethod); 
                 
             } catch (error) {
-                console.error("Error durante el check-out:", error);
-                alert("Ocurrió un error crítico durante el check-out o la facturación: " + error.message);
+                console.error("Error durante la facturación:", error);
+                alert("Ocurrió un error crítico durante la facturación: " + error.message);
             }
         }
     }
 
-
-    async facturar(lateCheckout) {
-        // Aquí podrías abrir un submodal específico para el proceso de facturación o simplemente cambiar el estado a "facturado"
+    async facturar(lateCheckout) { // This method seems redundant as handleFacturar does the work.
+        // Here you could open a specific submodal for the invoicing process or simply change the status to "invoiced"
         if (!this.currentBookingId) {
              alert("Error: No se puede facturar una reserva inexistente.");
              return;
         }  
+        // The logic for actual invoicing is in handleFacturar and generateInvoice.
     }
 
     async handleCheckOut() {
         if (!this.currentBookingId) {
-             alert("Error: No se puede facturar una reserva inexistente.");
+             alert("Error: No se puede realizar el Check-Out de una reserva inexistente.");
              return;
         }
 
         const billingPanel = this.shadow.getElementById('billingPanel');
+        const minibarConsumptionPanel = this.shadow.getElementById('minibarConsumptionPanel');
         const paymentMethod = billingPanel.getPaymentMethod();
-        const total = billingPanel.shadowRoot.getElementById('totalAmountDisplay').textContent;
 
-        if (confirm(`El total a pagar es $${total}. ¿Confirmar Check-Out y generar factura?`)) {
+        // Recalculate totals to ensure accuracy before confirmation
+        const currentConsumptionsTotal = billingPanel.getTotalConsumptions();
+        const currentMinibarTotal = minibarConsumptionPanel.getMinibarTotal();
+        const stayCostText = billingPanel.shadowRoot.getElementById('stayCost').textContent.replace('$', '').replace(',', '') || '0.00';
+        const stayCost = parseFloat(stayCostText);
+        const total = stayCost + currentConsumptionsTotal + currentMinibarTotal; // No late checkout logic here, assumed to be handled in Cobrar.
+
+        if (confirm(`El total a pagar es $${total.toFixed(2)}. ¿Confirmar Check-Out y generar factura?`)) {
             // 1. Establecer el estado a checked-out en el subcomponente
             this.shadow.getElementById('detailsForm').shadowRoot.getElementById('statusSelect').value = 'checked-out';
 
@@ -410,7 +482,7 @@ class BookingModal extends HTMLElement {
                 // 2. Guardar/actualizar la reserva.
                 await this.handleSave('checked-out');
 
-                // 3. Generamos la factura.
+                // 3. Generamos la factura (this also marks room dirty and sets booking status to 'invoiced' in backend).
                 await this.generateInvoice(this.currentBookingId, paymentMethod);
 
             } catch (error) {
