@@ -10,13 +10,16 @@ class DashboardMenu extends HTMLElement {
     }
 
     getCurrentUserRole() {
-        // Lee directamente de localStorage. Usamos 'operador' como fallback seguro.
-        return localStorage.getItem('userRole') || 'operador'; 
+        const userRole = localStorage.getItem('userRole') || 'operador'; 
+        console.log('DashboardMenu: Rol de usuario detectado:', userRole); // LOG DE DEPURACIÓN
+        return userRole;
     }
 
     // Función auxiliar para verificar si el rol del usuario tiene permiso
     userHasRequiredRole(requiredRoles) {
-        return requiredRoles.includes(this.userRole);
+        const hasRole = requiredRoles.includes(this.userRole);
+        // console.log(`DashboardMenu: Comprobando si el rol '${this.userRole}' está en [${requiredRoles.join(', ')}]: ${hasRole}`); // LOG DE DEPURACIÓN (puede ser muy ruidoso)
+        return hasRole;
     }
     
     render() {
@@ -113,10 +116,85 @@ class DashboardMenu extends HTMLElement {
                 .menu-item.expanded.has-submenu > a::after { transform: rotate(180deg); }
                 .logout-section { padding: 10px 20px; }
                 #logoutButton { background-color: #e74c3c; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; font-size: 0.9em; }
+
+                /* Estilos para el enlace móvil-only */
+                .mobile-only-link {
+                    display: none; /* Oculto por defecto en escritorio */
+                }
+
+                @media (max-width: 768px) {
+                    .mobile-only-link {
+                        display: block; /* Visible en móvil */
+                    }
+                    /* Estilos para el menú en móviles */
+                    .menu-container {
+                        width: 100%;
+                        height: auto;
+                        position: relative;
+                        box-shadow: none;
+                        padding: 0;
+                        flex-direction: row; /* Horizontal layout for header on mobile */
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .logo {
+                        flex-grow: 1;
+                        text-align: left;
+                        padding-left: 20px;
+                        margin-bottom: 0;
+                    }
+                    nav {
+                        display: none; /* Ocultar nav por defecto en móvil */
+                        width: 100%;
+                        position: absolute;
+                        top: 100%; /* Debajo del logo/toggle */
+                        left: 0;
+                        background-color: var(--menu-bg);
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        z-index: 1000; /* Asegurarse de que esté por encima de otros contenidos */
+                    }
+                    .menu-container.mobile-expanded nav {
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    nav ul {
+                        width: 100%;
+                        padding: 0;
+                    }
+                    .menu-item a {
+                        border-left: none; /* Eliminar borde activo en móvil por defecto */
+                        text-align: center;
+                        justify-content: center;
+                    }
+                    .mobile-menu-toggle {
+                        display: block !important; /* Asegurar que el botón se muestre */
+                        padding: 10px 20px;
+                        font-size: 1.5em;
+                        cursor: pointer;
+                        color: var(--text-color-light);
+                    }
+                    .logout-section {
+                        display: none; /* Ocultar logout por defecto en móvil */
+                    }
+                    .menu-container.mobile-expanded .logout-section {
+                        display: block; /* Mostrar logout cuando el menú está expandido */
+                        width: 100%;
+                        position: absolute;
+                        /* Ajusta el 'top' dinámicamente o con calc() si es posible, o usa flexbox */
+                        top: calc(100% + var(--nav-height, 0px)); 
+                        left: 0;
+                        background-color: var(--menu-bg);
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        padding-top: 0;
+                        padding-bottom: 20px;
+                        z-index: 1000;
+                    }
+                }
             </style>
             
             <div class="menu-container">
                 <div class="logo">🏨 Hotel Admin (${this.userRole})</div>
+                <div class="mobile-menu-toggle">☰</div> <!-- Botón para menú móvil -->
                 <nav>
                     <ul>
                         ${navHtml} <!-- Insertamos el HTML dinámico aquí -->
@@ -134,6 +212,7 @@ class DashboardMenu extends HTMLElement {
         this.shadowRoot.getElementById('logoutButton').addEventListener('click', () => this.handleLogout());
         this.highlightActiveLink();
         this.setupSubMenus();
+        this.setupMobileMenuToggle(); // Nuevo setup para el toggle móvil
     }
 
     // handleLogout, highlightActiveLink, y setupSubMenus se mantienen igual que tu código original, 
@@ -171,6 +250,31 @@ class DashboardMenu extends HTMLElement {
                 e.preventDefault();
                 const parentItem = link.closest('.menu-item');
                 parentItem.classList.toggle('expanded');
+            });
+        });
+    }
+
+    setupMobileMenuToggle() {
+        const toggleButton = this.shadowRoot.querySelector('.mobile-menu-toggle');
+        const menuContainer = this.shadowRoot.querySelector('.menu-container');
+        const navElement = this.shadowRoot.querySelector('nav');
+        const logoutSection = this.shadowRoot.querySelector('.logout-section');
+
+        toggleButton.addEventListener('click', () => {
+            menuContainer.classList.toggle('mobile-expanded');
+            // Calcula y setea la altura de la navegación para el posicionamiento del logout-section
+            if (menuContainer.classList.contains('mobile-expanded')) {
+                const navHeight = navElement.offsetHeight;
+                logoutSection.style.top = `calc(100% + ${navHeight}px)`;
+            }
+        });
+
+        // Cierra el menú si se hace clic en un enlace (solo para móvil)
+        navElement.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) { // Considera "móvil" si el ancho es menor o igual a 768px
+                    menuContainer.classList.remove('mobile-expanded');
+                }
             });
         });
     }
