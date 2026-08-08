@@ -3,11 +3,13 @@ const express = require('express');
 const router = express.Router();
 const { authenticateMiddleware } = require('../auth');
 const bcrypt = require('bcrypt');
-const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, sequelize, Client, MinibarProduct, MinibarConsumption } = require('../models'); 
+// Importar el nuevo modelo Attendance y la función generateQrToken
+const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, Attendance, sequelize, Client, MinibarProduct, MinibarConsumption } = require('../models'); 
 const { Op } = require('sequelize'); // Operadores de Sequelize para consultas complejas
 const { sendBookingConfirmation } = require('../services/email-service'); // Importa el nuevo servicio
 const { BookingReservas } = require('../booking/reservas'); // Importa la clase BookingReservas
 const { getMonthlyOccupancy } = require('../services/monthly-occupancy-service'); // Importa el nuevo servicio de ocupación
+const { generateQrToken } = require('../utils/qrTokenGenerator'); // Importa la utilidad para QR Token
 
 // Add imports for Gemini API
 const fs = require('fs');
@@ -890,6 +892,63 @@ const authorizeRoles = (roles) => (req, res, next) => {
     }
     next();
 };
+
+// --- Endpoints de Asistencia (QR Clock-in/out) ---
+
+// Endpoint para obtener el token QR dinámico (Solo Admin/Operador)
+router.get('/asistencia/qr-token', authorizeRoles(['admin', 'operador']), async (req, res) => {
+    try {
+        const qrSecret = process.env.QR_TOKEN_SECRET;
+        if (!qrSecret) {
+            console.error('QR_TOKEN_SECRET environment variable is not set.');
+            return res.status(500).json({ error: "Server configuration error: QR secret missing." });
+        }
+        const token = generateQrToken(qrSecret);
+        res.json({ token: token });
+    } catch (error) {
+        console.error('Error generating QR token:', error);
+        res.status(500).json({ error: "Error interno del servidor al generar el token QR." });
+    }
+});
+
+// Endpoint para fichar entrada/salida (Acceso para usuarios autenticados)
+router.post('/asistencia/fichar', authenticateMiddleware, async (req, res) => {
+    const { tokenCliente, accion } = req.body;
+
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: "Usuario no autenticado." });
+    }
+
+    if (!tokenCliente || !['IN', 'OUT'].includes(accion)) {
+        return res.status(400).json({ error: "Faltan campos requeridos o acción inválida ('IN' o 'OUT')." });
+    }
+
+    try {
+        const qrSecret = process.env.QR_TOKEN_SECRET;
+        if (!qrSecret) {
+            console.error('QR_TOKEN_SECRET environment variable is not set.');
+            return res.status(500).json({ error: "Server configuration error: QR secret missing." });
+        }
+
+        const serverToken = generateQrToken(qrSecret);
+
+        if (tokenCliente !== serverToken) {
+            return res.status(403).json({ error: "QR Expirado o inválido." });
+        }
+
+        await Attendance.create({
+            user_id: req.user.id,
+            action_type: accion,
+            device: 'MOBILE' // Asumimos que el fichaje es desde un dispositivo móvil con QR
+        });
+
+        res.status(201).json({ message: `Fichaje de ${accion} registrado exitosamente para ${req.user.username}.` });
+
+    } catch (error) {
+        console.error('Error al registrar fichaje:', error);
+        res.status(500).json({ error: "Error interno del servidor al registrar el fichaje." });
+    }
+});
 
 
 // --- READ: Obtener todos los usuarios (Solo Admin/Supervisor) ---
