@@ -50,13 +50,16 @@ class DashboardMenu extends HTMLElement {
                     { href: '/prices.html', label: 'Precios y Tarifas', roles: ['admin', 'supervisor'] },
                     { href: '/clients.html', label: 'Administrar Clientes', roles: ['admin', 'supervisor', 'operador'] },
                     { href: '/employees.html', label: 'Gestión Empleados', roles: ['admin', 'supervisor'] },
-                    { href: '/minibar.html', label: 'Administrar Minibar', icon: '🛒', roles: ['admin', 'supervisor', 'operador'] }, // Nueva entrada del menú
+                    { href: '/minibar.html', label: 'Administrar Minibar', icon: '🛒', roles: ['admin', 'supervisor', 'operador'] },
+                    { href: '/qr-point.html', label: 'Punto de Fichaje (QR)', icon: '📱', roles: ['admin', 'operador'] }, // Nueva entrada para Admin/Operador
+                    { href: '/attendance-reports.html', label: 'Reportes de Asistencia', icon: '📋', roles: ['admin'] }, // Nueva entrada para Admin
                     // ESTA OPCIÓN ES SOLO PARA ADMINS:
                     { href: '/users-abm.html', label: 'Gestión Usuarios', roles: ['admin'] },
                     { href: '/shifts-planner.html', label: 'Planificador Turnos', roles: ['admin', 'supervisor', 'operador'] },
                     { href: '/settings-panel.html', label: 'Ajustes Cuenta', roles: ['admin', 'supervisor', 'operador', 'limpieza'] }
                 ]
-            }
+            },
+            { href: '/fichar.html', label: 'Mi Asistencia Móvil', icon: '🤳', roles: ['admin', 'supervisor', 'operador', 'limpieza'], mobileOnly: true } // Nueva entrada de nivel superior, solo móvil
         ];
 
         // --- 2. Función auxiliar para generar el HTML de los enlaces dinámicamente ---
@@ -285,30 +288,6 @@ class DashboardMenu extends HTMLElement {
         });
     }
 
-    setupMobileMenuToggle() {
-        const toggleButton = this.shadowRoot.querySelector('.mobile-menu-toggle');
-        const menuContainer = this.shadowRoot.querySelector('.menu-container');
-        const navElement = this.shadowRoot.querySelector('nav');
-        const logoutSection = this.shadowRoot.querySelector('.logout-section');
-
-        toggleButton.addEventListener('click', () => {
-            menuContainer.classList.toggle('mobile-expanded');
-            // Calcula y setea la altura de la navegación para el posicionamiento del logout-section
-            if (menuContainer.classList.contains('mobile-expanded')) {
-                const navHeight = navElement.offsetHeight;
-                logoutSection.style.top = `calc(100% + ${navHeight}px)`;
-            }
-        });
-
-        // Cierra el menú si se hace clic en un enlace (solo para móvil)
-        navElement.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) { // Considera "móvil" si el ancho es menor o igual a 768px
-                    menuContainer.classList.remove('mobile-expanded');
-                }
-            });
-        });
-    }
 }
 
 customElements.define('dashboard-menu', DashboardMenu);
