@@ -950,6 +950,41 @@ router.post('/asistencia/fichar', authenticateMiddleware, async (req, res) => {
     }
 });
 
+// Endpoint para obtener reportes de asistencia (Solo Admin)
+router.get('/asistencia/reporte', authorizeRoles(['admin']), async (req, res) => {
+    const { startDate, endDate, userId } = req.query;
+    
+    try {
+        const whereClause = {};
+        if (startDate && endDate) {
+            whereClause.timestamp = {
+                [Op.between]: [`${startDate}T00:00:00.000Z`, `${endDate}T23:59:59.999Z`]
+            };
+        }
+        if (userId) {
+            whereClause.user_id = userId;
+        }
+
+        const attendanceRecords = await Attendance.findAll({
+            where: whereClause,
+            include: [{
+                model: User,
+                attributes: ['username', 'email', 'role']
+            }],
+            order: [['timestamp', 'DESC']]
+        });
+
+        // Opcionalmente, agregar lógica para 'Estado' (A tiempo / Tardanza)
+        // Esto requeriría definir reglas de horario de entrada/salida en el backend
+        // Por ahora, se omite y se deja para una futura implementación si es necesario.
+
+        res.json({ message: "success", data: attendanceRecords });
+    } catch (error) {
+        console.error('Error al obtener el reporte de asistencia:', error);
+        res.status(500).json({ error: "Error interno del servidor al generar el reporte de asistencia." });
+    }
+});
+
 
 // --- READ: Obtener todos los usuarios (Solo Admin/Supervisor) ---
 router.get('/users/', authorizeRoles(['admin', 'supervisor']), async (req, res) => {
