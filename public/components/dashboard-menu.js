@@ -64,7 +64,13 @@ class DashboardMenu extends HTMLElement {
             // Si el usuario no tiene el rol necesario, no generamos HTML para este ítem
             if (!this.userHasRequiredRole(item.roles)) return '';
 
-            let itemHtml = `<li class="menu-item ${item.submenu ? 'has-submenu' : ''}">
+            // Agrega clase 'mobile-only-link' para entradas específicas de móvil
+            let linkClass = '';
+            if (item.mobileOnly) {
+                linkClass = 'mobile-only-link';
+            }
+
+            let itemHtml = `<li class="menu-item ${item.submenu ? 'has-submenu' : ''} ${linkClass}">
                 <a href="${item.href || '#'}">
                     <span class="icon">${item.icon || ''}</span> ${item.label}
                 </a>`;
@@ -250,6 +256,31 @@ class DashboardMenu extends HTMLElement {
                 e.preventDefault();
                 const parentItem = link.closest('.menu-item');
                 parentItem.classList.toggle('expanded');
+            });
+        });
+    }
+
+    setupMobileMenuToggle() {
+        const toggleButton = this.shadowRoot.querySelector('.mobile-menu-toggle');
+        const menuContainer = this.shadowRoot.querySelector('.menu-container');
+        const navElement = this.shadowRoot.querySelector('nav');
+        const logoutSection = this.shadowRoot.querySelector('.logout-section');
+
+        toggleButton.addEventListener('click', () => {
+            menuContainer.classList.toggle('mobile-expanded');
+            // Calcula y setea la altura de la navegación para el posicionamiento del logout-section
+            if (menuContainer.classList.contains('mobile-expanded')) {
+                const navHeight = navElement.offsetHeight;
+                logoutSection.style.top = `calc(100% + ${navHeight}px)`;
+            }
+        });
+
+        // Cierra el menú si se hace clic en un enlace (solo para móvil)
+        navElement.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) { // Considera "móvil" si el ancho es menor o igual a 768px
+                    menuContainer.classList.remove('mobile-expanded');
+                }
             });
         });
     }
