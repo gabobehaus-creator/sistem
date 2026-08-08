@@ -42,6 +42,19 @@ app.get('/minibar.html', authenticateMiddleware, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'minibar.html'));
 });
 
+// Nuevas rutas para el módulo de asistencia
+app.get('/qr-point.html', authenticateMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'qr-point.html'));
+});
+
+app.get('/fichar.html', authenticateMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'fichar.html'));
+});
+
+app.get('/attendance-reports.html', authenticateMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'attendance-reports.html'));
+});
+
 // ----------------------------------------
 app.use('/api', apiRoutes);
 
