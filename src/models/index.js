@@ -148,6 +148,52 @@ const MinibarConsumption = sequelize.define('MinibarConsumption', {
     date_consumed: { type: DataTypes.TEXT, allowNull: false },
 }, { tableName: 'minibar_consumptions', timestamps: false });
 
+ const Attendance = sequelize.define('Attendance', {
+        id: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
+        },
+        user_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'Users', // Nombre de la tabla de usuarios
+                key: 'id',
+            },
+            onDelete: 'CASCADE',
+        },
+        timestamp: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            defaultValue: DataTypes.NOW,
+        },
+        action_type: {
+            type: DataTypes.ENUM('IN', 'OUT'),
+            allowNull: false,
+        },
+        device: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: 'MOBILE', // O 'WEB' si también se permite desde la web
+        },
+    }, {
+        tableName: 'attendances',
+        timestamps: false, // No usamos createdAt/updatedAt para este modelo
+        indexes: [
+            {
+                fields: ['user_id', 'timestamp']
+            }
+        ]
+    });
+
+    // Definir asociaciones si es necesario
+    Attendance.associate = (models) => {
+        Attendance.belongsTo(models.User, { foreignKey: 'user_id' });
+    };
+
+
+
 // --- Definición de Relaciones (Foreign Keys) ---
 Booking.belongsTo(Room, { foreignKey: 'room_id' });
 Room.hasMany(Booking, { foreignKey: 'room_id' });
@@ -179,6 +225,7 @@ module.exports = {
     Expense,
     Client,
     MinibarProduct,         // Nuevo modelo
-    MinibarConsumption      // Nuevo modelo
+    MinibarConsumption,      // Nuevo modelo
+    Attendance
 };
 
