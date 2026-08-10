@@ -34,7 +34,7 @@ class PanelFichajeMovil extends HTMLElement {
                     justify-content: center;
                     align-items: center;
                     margin: 20px auto;
-                    padding: 30px;
+                    padding: 20px;
                     background-color: #ffffff;
                     border: 4px solid #000000;
                     border-radius: 16px;
@@ -79,17 +79,17 @@ class PanelFichajeMovil extends HTMLElement {
                 }
                 .btn-fichar {
                     display: inline-block;
-                    background-color: #28a745;
+                    background-color: #007bff;
                     color: white;
                     text-decoration: none;
-                    padding: 12px 24px;
+                    padding: 10px 20px;
                     border-radius: 8px;
                     font-weight: bold;
-                    font-size: 1em;
+                    font-size: 0.9em;
                     transition: background-color 0.2s;
                 }
                 .btn-fichar:hover {
-                    background-color: #218838;
+                    background-color: #0056b3;
                 }
             </style>
             <div>
@@ -98,7 +98,10 @@ class PanelFichajeMovil extends HTMLElement {
                 <div id="qrCodeContainer"></div>
                 <div class="timer" id="qrRefreshTimer">El código se actualizará en 30 segundos.</div>
                 <div id="messageArea" class="message" style="display: none;"></div>
-                
+                <div class="direct-link">
+                    <p style="margin-bottom: 8px; font-size: 0.85em; color: #666;">¿Problemas con la cámara?</p>
+                    <a id="directLink" class="btn-fichar" href="#" target="_blank">Fichar directamente aquí</a>
+                </div>
             </div>
         `;
     }
@@ -129,8 +132,14 @@ class PanelFichajeMovil extends HTMLElement {
 
         const token = this.generateToken();
         
-        // URL ultra-corta con dominio/ip dinámico
-         this.qrCodeData = `${window.location.origin}/attendance-marker.html?t=${token}`;
+        // URL con el parámetro 'token' esperado por attendance-marker-component.js
+        this.qrCodeData = `${window.location.origin}/attendance-marker.html?token=${token}`;
+
+        // Actualizar enlace directo de respaldo para teléfonos con cámaras defectuosas
+        const directLink = this.shadowRoot.getElementById('directLink');
+        if (directLink) {
+            directLink.href = this.qrCodeData;
+        }
 
         // Ensure QRCode library is loaded before use
         if (typeof window.QRCode === 'undefined') {
@@ -139,14 +148,14 @@ class PanelFichajeMovil extends HTMLElement {
             return;
         }
 
-        // Renderizado de alta definición con baja densidad de puntos
+        // Renderizado de alta definición con baja densidad de puntos (CorrectLevel.L para cuadros grandes y fáciles de leer)
         this.qrCodeInstance = new window.QRCode(qrContainer, {
             text: this.qrCodeData,
-            width: 400, // Matriz grande
+            width: 400,
             height: 400,
             colorDark: "#000000",
             colorLight: "#ffffff",
-            correctLevel: window.QRCode.CorrectLevel.L // Cuadros extremadamente grandes
+            correctLevel: window.QRCode.CorrectLevel.L 
         });
 
         const timerElement = this.shadowRoot.getElementById('qrRefreshTimer');
