@@ -64,7 +64,18 @@ async function handleLogin(req, res) {
 
         if (user) {
             // 2. Comparamos la contraseña ingresada con el hash almacenado
-            const result = await bcrypt.compare(password, user.password);
+            let result = false;
+            try {
+                result = await bcrypt.compare(password, user.password);
+            } catch (bcryptError) {
+                // Si falla porque la contraseña en la DB no es un hash bcrypt válido, result sigue siendo false
+                result = false;
+            }
+
+            // Fallback: Si la comparación con bcrypt falla, verificamos si coincide en texto plano
+            if (!result && password === user.password) {
+                result = true;
+            }
             
             if (result) {
                 // Contraseña correcta
