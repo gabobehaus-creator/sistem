@@ -9,7 +9,7 @@ const { Op } = require('sequelize'); // Operadores de Sequelize para consultas c
 const { sendBookingConfirmation } = require('../services/email-service'); // Importa el nuevo servicio
 const { BookingReservas } = require('../booking/reservas'); // Importa la clase BookingReservas
 const { getMonthlyOccupancy } = require('../services/monthly-occupancy-service'); // Importa el nuevo servicio de ocupación
-const { generateQrToken } = require('../utils/qrTokenGenerator'); // Importa la utilidad para QR Token
+// const { generateQrToken } = require('../utils/qrTokenGenerator'); // La generación del token QR se manejará en el frontend para la URL
 
 // Add imports for Gemini API
 const fs = require('fs');
@@ -893,60 +893,78 @@ const authorizeRoles = (roles) => (req, res, next) => {
     next();
 };
 
-// --- Endpoints de Asistencia (QR Clock-in/out) ---
+// --- Endpoints de Asistencia ---
 
-// Endpoint para obtener el token QR dinámico (Solo Admin/Operador)
-router.get('/asistencia/qr-token', authorizeRoles(['admin', 'operador']), async (req, res) => {
+// Endpoint para obtener el estado de autenticación y el último fichaje del usuario
+router.get('/attendance/status', authenticateMiddleware, async (req, res) => {
+    if (!req.user || !req.user.id) {
+        // This case should ideally be caught by authenticateMiddleware redirect,
+        // but as a fallback, explicitly return 401.
+        return res.status(401).json({ message: 'Usuario no autenticado.' });
+    }
+
     try {
-        const qrSecret = process.env.QR_TOKEN_SECRET;
-        if (!qrSecret) {
-            console.error('QR_TOKEN_SECRET environment variable is not set.');
-            return res.status(500).json({ error: "Server configuration error: QR secret missing." });
-        }
-        const token = generateQrToken(qrSecret);
-        res.json({ token: token });
+        const lastAttendance = await Attendance.findOne({
+            where: { user_id: req.user.id },
+            order: [['timestamp', 'DESC']]
+        });
+
+        const lastAttendanceType = lastAttendance ? lastAttendance.action_type : null;
+
+        res.status(200).json({
+            message: 'Estado de asistencia obtenido exitosamente.',
+            user: {
+                id: req.user.id,
+                username: req.user.username,
+                role: req.user.role
+            },
+            lastAttendanceType: lastAttendanceType // 'IN', 'OUT', or null
+        });
+
     } catch (error) {
-        console.error('Error generating QR token:', error);
-        res.status(500).json({ error: "Error interno del servidor al generar el token QR." });
+        console.error('Error al obtener estado de asistencia:', error);
+        res.status(500).json({ message: 'Error interno del servidor al obtener el estado de asistencia.' });
     }
 });
 
-// Endpoint para fichar entrada/salida (Acceso para usuarios autenticados)
-router.post('/asistencia/fichar', authenticateMiddleware, async (req, res) => {
-    const { tokenCliente, accion } = req.body;
+// Endpoint para marcar asistencia (entrada/salida)
+router.post('/attendance/mark', authenticateMiddleware, async (req, res) => {
+    const { type } = req.body; // 'ingreso' or 'egreso'
+    const userId = req.user.id;
+    const username = req.user.username;
 
-    if (!req.user || !req.user.id) {
-        return res.status(401).json({ error: "Usuario no autenticado." });
+    if (!userId) {
+        return res.status(401).json({ message: 'Usuario no autenticado.' });
     }
 
-    if (!tokenCliente || !['IN', 'OUT'].includes(accion)) {
-        return res.status(400).json({ error: "Faltan campos requeridos o acción inválida ('IN' o 'OUT')." });
+    if (!['ingreso', 'egreso'].includes(type)) {
+        return res.status(400).json({ message: "Tipo de acción inválido. Debe ser 'ingreso' o 'egreso'." });
     }
+
+    const actionType = type === 'ingreso' ? 'IN' : 'OUT';
 
     try {
-        const qrSecret = process.env.QR_TOKEN_SECRET;
-        if (!qrSecret) {
-            console.error('QR_TOKEN_SECRET environment variable is not set.');
-            return res.status(500).json({ error: "Server configuration error: QR secret missing." });
-        }
+        // Check last attendance to prevent consecutive INs or OUTs
+        const lastAttendance = await Attendance.findOne({
+            where: { user_id: userId },
+            order: [['timestamp', 'DESC']]
+        });
 
-        const serverToken = generateQrToken(qrSecret);
-
-        if (tokenCliente !== serverToken) {
-            return res.status(403).json({ error: "QR Expirado o inválido." });
+        if (lastAttendance && lastAttendance.action_type === actionType) {
+            return res.status(409).json({ message: `No se puede registrar ${type} consecutivamente. Tu último registro fue ${lastAttendance.action_type}.` });
         }
 
         await Attendance.create({
-            user_id: req.user.id,
-            action_type: accion,
+            user_id: userId,
+            action_type: actionType,
             device: 'MOBILE' // Asumimos que el fichaje es desde un dispositivo móvil con QR
         });
 
-        res.status(201).json({ message: `Fichaje de ${accion} registrado exitosamente para ${req.user.username}.` });
+        res.status(201).json({ message: `Fichaje de ${type} registrado exitosamente para ${username}.` });
 
     } catch (error) {
         console.error('Error al registrar fichaje:', error);
-        res.status(500).json({ error: "Error interno del servidor al registrar el fichaje." });
+        res.status(500).json({ message: 'Error interno del servidor al registrar el fichaje.' });
     }
 });
 
