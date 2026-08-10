@@ -97,7 +97,14 @@ async function handleLogin(req, res) {
                 if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
                     return res.redirect(redirectTo);
                 } else {
-                    return res.json({ success: true, redirectTo });
+                    return res.json({ 
+                        success: true, 
+                        redirectTo, 
+                        user: { 
+                            username: user.username, 
+                            role: user.role 
+                        } 
+                    });
                 }
             } else {
                 // Contraseña incorrecta
