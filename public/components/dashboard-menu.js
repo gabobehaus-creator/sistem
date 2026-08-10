@@ -59,7 +59,7 @@ class DashboardMenu extends HTMLElement {
                     { href: '/settings-panel.html', label: 'Ajustes Cuenta', roles: ['admin', 'supervisor', 'operador', 'limpieza'] }
                 ]
             },
-            { href: '/fichar.html', label: 'Mi Asistencia Móvil', icon: '🤳', roles: ['admin', 'supervisor', 'operador', 'limpieza'], mobileOnly: true } // Nueva entrada de nivel superior, solo móvil
+            { href: '/fichar.html', label: 'Mi Asistencia Móvil', icon: '🤳', roles: ['admin', 'supervisor', 'operador', 'limpieza'], mobileOnly: false } // Nueva entrada de nivel superior, solo móvil
         ];
 
         // --- 2. Función auxiliar para generar el HTML de los enlaces dinámicamente ---
