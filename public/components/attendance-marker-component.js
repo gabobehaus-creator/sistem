@@ -4,6 +4,7 @@ class AttendanceMarkerComponent extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.userName = '';
         this.lastAttendance = null; // To store last attendance type (e.g., 'ingreso', 'egreso')
+        this.qrToken = null;
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -100,9 +101,9 @@ class AttendanceMarkerComponent extends HTMLElement {
     async checkAuthAndToken() {
         // Extract the token from the QR code URL parameters first
         const urlParams = new URLSearchParams(window.location.search);
-        const qrToken = urlParams.get('token');
+        this.qrToken = urlParams.get('token');
 
-        if (!qrToken) {
+        if (!this.qrToken) {
             this.showMessage('Código QR inválido o ausente.', 'error');
             this.disableButtons();
             setTimeout(() => window.location.href = '/fichar.html', 3000);
@@ -111,7 +112,7 @@ class AttendanceMarkerComponent extends HTMLElement {
 
         // Check if the user is authenticated and get their last attendance status, passing the token
         try {
-            const response = await fetch(`/api/attendance/status?token=${encodeURIComponent(qrToken)}`);
+            const response = await fetch(`/api/attendance/status?token=${encodeURIComponent(this.qrToken)}`);
             if (response.status === 401) {
                 // Not authenticated, redirect to login page (main page)
                 // Append the current page's full URL as a query parameter for redirection after login
@@ -176,7 +177,7 @@ class AttendanceMarkerComponent extends HTMLElement {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ type: type }),
+                body: JSON.stringify({ type: type, token: this.qrToken }),
             });
 
             if (response.status === 401) {
