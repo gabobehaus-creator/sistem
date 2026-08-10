@@ -98,9 +98,20 @@ class AttendanceMarkerComponent extends HTMLElement {
     }
 
     async checkAuthAndToken() {
-        // First, check if the user is authenticated and get their last attendance status
+        // Extract the token from the QR code URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const qrToken = urlParams.get('token');
+
+        if (!qrToken) {
+            this.showMessage('Código QR inválido o ausente.', 'error');
+            this.disableButtons();
+            setTimeout(() => window.location.href = '/fichar.html', 3000);
+            return;
+        }
+
+        // Check if the user is authenticated and get their last attendance status, passing the token
         try {
-            const response = await fetch('/api/attendance/status');
+            const response = await fetch(`/api/attendance/status?token=${encodeURIComponent(qrToken)}`);
             if (response.status === 401) {
                 // Not authenticated, redirect to login page (main page)
                 // Append the current page's full URL as a query parameter for redirection after login
@@ -111,6 +122,7 @@ class AttendanceMarkerComponent extends HTMLElement {
             if (!response.ok) {
                 const errorData = await response.json();
                 this.showMessage(errorData.message || 'Error al verificar la autenticación.', 'error');
+                this.disableButtons();
                 return;
             }
 
@@ -118,28 +130,12 @@ class AttendanceMarkerComponent extends HTMLElement {
             this.userName = data.user.username;
             this.lastAttendance = data.lastAttendanceType; // 'IN', 'OUT', or null
             this.updateUI();
+            this.showMessage(`Bienvenido, ${this.userName}.`, 'info');
 
         } catch (error) {
             console.error('Error checking authentication status:', error);
             this.showMessage('Error de conexión al verificar el estado de autenticación.', 'error');
-            // If there's a network error, maybe try redirecting to login as a fallback
-            window.location.href = '/';
-        }
-
-        // The token from the QR code is more for indicating a valid QR was scanned recently
-        // The actual user authentication is handled by the session cookie.
-        const urlParams = new URLSearchParams(window.location.search);
-        const qrToken = urlParams.get('token');
-
-        if (!qrToken) {
-            this.showMessage('Código QR inválido o ausente.', 'error');
             this.disableButtons();
-            // Potentially redirect after a delay, or show a link back to fichar.html
-            setTimeout(() => window.location.href = '/fichar.html', 3000);
-        } else {
-            // Optionally, you might want a backend endpoint to validate the QR token's recency
-            // to prevent scanning old QRs. For now, we trust the client-side generation and refresh.
-            this.showMessage(`Bienvenido, ${this.userName}.`, 'info');
         }
     }
 
