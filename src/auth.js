@@ -81,9 +81,13 @@ async function handleLogin(req, res) {
                     res.clearCookie('post_login_redirect'); // Clear the temporary cookie
                 }
 
-                // Perform a server-side redirect
-                // This will change the API contract of /api/login from returning JSON to performing a redirect.
-                return res.redirect(redirectTo);
+                // Si la petición es un POST de formulario tradicional, redireccionamos directamente.
+                // Si es una petición AJAX/Fetch (JSON), devolvemos la URL para que el frontend redireccione.
+                if (req.headers['content-type'] && req.headers['content-type'].includes('application/x-www-form-urlencoded')) {
+                    return res.redirect(redirectTo);
+                } else {
+                    return res.json({ success: true, redirectTo });
+                }
             } else {
                 // Contraseña incorrecta
                 res.status(401).json({ error: "Usuario o contraseña incorrectos" });
