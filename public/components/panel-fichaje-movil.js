@@ -99,10 +99,6 @@ class PanelFichajeMovil extends HTMLElement {
                 <div class="timer" id="qrRefreshTimer">El código se actualizará en 30 segundos.</div>
                 <div id="messageArea" class="message" style="display: none;"></div>
                 
-                <div class="direct-link">
-                    <p style="font-size: 0.85em; color: #777;">¿Tu cámara no detecta el código QR?</p>
-                    <a href="/fichar.html" class="btn-fichar">Ingresar al Marcador de Asistencia</a>
-                </div>
             </div>
         `;
     }
@@ -134,7 +130,7 @@ class PanelFichajeMovil extends HTMLElement {
         const token = this.generateToken();
         
         // URL ultra-corta con dominio/ip dinámico
-        this.qrCodeData = `${window.location.origin}/fichar.html?t=${token}`;
+         this.qrCodeData = `${window.location.origin}/attendance-marker.html?t=${token}`;
 
         // Ensure QRCode library is loaded before use
         if (typeof window.QRCode === 'undefined') {
