@@ -12,31 +12,34 @@ class PanelFichajeMovil extends HTMLElement {
                     display: block;
                     background-color: #ffffff;
                     padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                    max-width: 400px;
-                    margin: 20px 30%;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+                    max-width: 440px;
+                    margin: 20px auto;
                     text-align: center;
                 }
                 h2 {
                     color: #333;
-                    margin-bottom: 25px;
+                    margin-bottom: 15px;
                     font-size: 1.8em;
                 }
                 #qrCodeContainer {
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    margin: 30px auto;
-                    padding: 10px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 5px;
-                    width: 200px; /* Adjust size as needed */
-                    height: 200px; /* Adjust size as needed */
+                    margin: 25px auto;
+                    padding: 20px;
+                    background-color: #ffffff;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 10px;
+                    width: 260px;
+                    height: 260px;
+                    box-sizing: border-box;
                 }
-                #qrCodeContainer img {
+                #qrCodeContainer img, #qrCodeContainer canvas {
                     max-width: 100%;
                     height: auto;
+                    display: block;
                 }
                 #messageArea {
                     margin-top: 20px;
@@ -56,14 +59,15 @@ class PanelFichajeMovil extends HTMLElement {
                     border-color: #f5c6cb;
                 }
                 .timer {
-                    font-size: 0.8em;
+                    font-size: 0.85em;
                     color: #666;
                     margin-top: 15px;
+                    font-weight: 500;
                 }
             </style>
             <div>
                 <h2>Fichaje Móvil con QR</h2>
-                <p>Escanea este código con tu dispositivo para registrar tu asistencia.</p>
+                <p>Escanea este código con la cámara de tu teléfono para registrar tu asistencia.</p>
                 <div id="qrCodeContainer"></div>
                 <div class="timer" id="qrRefreshTimer">El código se actualizará en 30 segundos.</div>
                 <div id="messageArea" class="message" style="display: none;"></div>
@@ -89,8 +93,8 @@ class PanelFichajeMovil extends HTMLElement {
     // A simple function to generate a unique token for the QR code payload.
     generateToken() {
         const timestamp = new Date().getTime();
-        const random = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        return `ATTENDANCE-${timestamp}-${random}`;
+        const random = Math.random().toString(36).substring(2, 8);
+        return `ATT-${timestamp}-${random}`;
     }
 
     generateAndDisplayQRCode() {
@@ -111,11 +115,11 @@ class PanelFichajeMovil extends HTMLElement {
 
         this.qrCodeInstance = new window.QRCode(qrContainer, {
             text: this.qrCodeData, // Send the URL string as QR data
-            width: 180,
-            height: 180,
+            width: 220,
+            height: 220,
             colorDark: "#000000",
             colorLight: "#ffffff",
-            correctLevel: window.QRCode.CorrectLevel.H
+            correctLevel: window.QRCode.CorrectLevel.M
         });
 
         const timerElement = this.shadowRoot.getElementById('qrRefreshTimer');
