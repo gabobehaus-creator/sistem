@@ -97,11 +97,10 @@ class PanelFichajeMovil extends HTMLElement {
         const qrContainer = this.shadowRoot.getElementById('qrCodeContainer');
         qrContainer.innerHTML = ''; // Clear previous QR code
 
-        this.qrCodeData = {
-            token: this.generateToken(),
-            timestamp: new Date().toISOString(),
-            expiry: new Date(Date.now() + 30000).toISOString() // Valid for 30 seconds
-        };
+        const token = this.generateToken();
+        // The QR code will now contain a URL that points to the new attendance page
+        // and includes the generated token as a query parameter.
+        this.qrCodeData = `${window.location.origin}/attendance-marker.html?token=${token}`;
 
         // Ensure QRCode library is loaded before use
         if (typeof window.QRCode === 'undefined') {
@@ -111,12 +110,12 @@ class PanelFichajeMovil extends HTMLElement {
         }
 
         this.qrCodeInstance = new window.QRCode(qrContainer, {
-            text: JSON.stringify(this.qrCodeData), // Send JSON string as QR data
+            text: this.qrCodeData, // Send the URL string as QR data
             width: 180,
             height: 180,
             colorDark: "#000000",
             colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
+            correctLevel: window.QRCode.CorrectLevel.H
         });
 
         const timerElement = this.shadowRoot.getElementById('qrRefreshTimer');
