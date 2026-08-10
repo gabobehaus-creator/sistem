@@ -15,7 +15,7 @@ class PanelFichajeMovil extends HTMLElement {
                     border-radius: 10px;
                     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
                     max-width: 400px;
-                    margin: 20px;
+                    margin: 20px 30%;
                     text-align: center;
                 }
                 h2 {
