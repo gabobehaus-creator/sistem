@@ -52,7 +52,11 @@ app.get('/fichar.html', authenticateMiddleware, (req, res) => {
 });
 
 app.get('/attendance-reports.html', authenticateMiddleware, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'attendance-reports.html'));
+    res.sendFile(path.join(__dirname, 'public', 'attendance-report.html'));
+});
+
+app.get('/attendance-report.html', authenticateMiddleware, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'attendance-report.html'));
 });
 
 // ----------------------------------------
@@ -72,4 +76,3 @@ seedDatabase().then(() => {
 }).catch(err => {
     console.error("Error al iniciar la base de datos:", err);
 });
-
