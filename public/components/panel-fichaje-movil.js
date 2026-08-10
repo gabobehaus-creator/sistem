@@ -14,7 +14,7 @@ class PanelFichajeMovil extends HTMLElement {
                     padding: 30px;
                     border-radius: 12px;
                     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-                    max-width: 440px;
+                    max-width: 480px;
                     margin: 20px auto;
                     text-align: center;
                 }
@@ -28,12 +28,12 @@ class PanelFichajeMovil extends HTMLElement {
                     justify-content: center;
                     align-items: center;
                     margin: 25px auto;
-                    padding: 20px;
+                    padding: 24px;
                     background-color: #ffffff;
-                    border: 2px solid #e0e0e0;
-                    border-radius: 10px;
-                    width: 260px;
-                    height: 260px;
+                    border: 3px solid #111111;
+                    border-radius: 12px;
+                    width: 320px;
+                    height: 320px;
                     box-sizing: border-box;
                 }
                 #qrCodeContainer img, #qrCodeContainer canvas {
@@ -90,11 +90,9 @@ class PanelFichajeMovil extends HTMLElement {
         }
     }
 
-    // A simple function to generate a unique token for the QR code payload.
+    // Un token compacto y corto
     generateToken() {
-        const timestamp = new Date().getTime();
-        const random = Math.random().toString(36).substring(2, 8);
-        return `ATT-${timestamp}-${random}`;
+        return Math.random().toString(36).substring(2, 10);
     }
 
     generateAndDisplayQRCode() {
@@ -102,24 +100,23 @@ class PanelFichajeMovil extends HTMLElement {
         qrContainer.innerHTML = ''; // Clear previous QR code
 
         const token = this.generateToken();
-        // The QR code will now contain a URL that points to the new attendance page
-        // and includes the generated token as a query parameter.
-        this.qrCodeData = `${window.location.origin}/attendance-marker.html?token=${token}`;
+        // Usamos una URL corta para minimizar la densidad de puntos del QR
+        this.qrCodeData = `${window.location.origin}/attendance-marker.html?t=${token}`;
 
         // Ensure QRCode library is loaded before use
         if (typeof window.QRCode === 'undefined') {
-            console.error('QRCode library not loaded. Please ensure qrcode.min.js is included in your HTML and window.QRCode is available.');
-            this.showMessage('Error: Librería de QR no cargada (window.QRCode no encontrado). Por favor, recarga la página.', 'error');
+            console.error('QRCode library not loaded.');
+            this.showMessage('Error: Librería de QR no cargada. Por favor, recarga la página.', 'error');
             return;
         }
 
         this.qrCodeInstance = new window.QRCode(qrContainer, {
-            text: this.qrCodeData, // Send the URL string as QR data
-            width: 220,
-            height: 220,
+            text: this.qrCodeData,
+            width: 270,
+            height: 270,
             colorDark: "#000000",
             colorLight: "#ffffff",
-            correctLevel: window.QRCode.CorrectLevel.M
+            correctLevel: window.QRCode.CorrectLevel.L // Nivel bajo de corrección = Puntos más grandes
         });
 
         const timerElement = this.shadowRoot.getElementById('qrRefreshTimer');
