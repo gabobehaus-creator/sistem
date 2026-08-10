@@ -1,0 +1,1 @@
+const { Attendance } = require('../models/attendance');

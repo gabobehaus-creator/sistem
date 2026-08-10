@@ -3,10 +3,9 @@ const express = require('express');
 const router = express.Router();
 const { authenticateMiddleware } = require('../auth');
 const bcrypt = require('bcrypt');
-// Importar el nuevo modelo Attendance y la función generateQrToken
-const { Attendance } = require('../models/attendance');
+// Importar la función generateQrToken
 const { generateQrToken } = require('../utils/qrTokenGenerator');
-const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, sequelize, Client, MinibarProduct, MinibarConsumption } = require('../models'); 
+const { Room, Booking, Consumption, Invoice, Employee, Shift, Expense, User, Attendance, sequelize, Client, MinibarProduct, MinibarConsumption } = require('../models'); 
 const { Op } = require('sequelize'); // Operadores de Sequelize para consultas complejas
 const { sendBookingConfirmation } = require('../services/email-service'); // Importa el nuevo servicio
 const { BookingReservas } = require('../booking/reservas'); // Importa la clase BookingReservas
