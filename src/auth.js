@@ -70,7 +70,7 @@ async function handleLogin(req, res) {
                 // Contraseña correcta
                 res.cookie('user_id', user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
 
-                let redirectTo = '/dashboard.html'; // Default redirect path after login
+                let redirectTo = '/dashboard'; // Default redirect path after login (corregido de /dashboard.html a /dashboard)
 
                 // Prioritize redirect_to from POST body (e.g., from login form passing a query param)
                 if (req.body.redirect_to) {
