@@ -103,7 +103,9 @@ class AttendanceMarkerComponent extends HTMLElement {
             const response = await fetch('/api/attendance/status');
             if (response.status === 401) {
                 // Not authenticated, redirect to login page (main page)
-                window.location.href = '/';
+                // Append the current page's full URL as a query parameter for redirection after login
+                const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = `/?redirect_to=${currentPath}`;
                 return;
             }
             if (!response.ok) {

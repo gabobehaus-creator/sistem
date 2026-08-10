@@ -10,18 +10,47 @@ async function authenticateMiddleware(req, res, next) {
             const user = await User.findByPk(req.cookies.user_id, { attributes: ['id', 'username', 'role'] });
             if (user) {
                 req.user = user; // Attach user object to request
+                // Clear any pending redirect cookie if the user is now authenticated
+                if (req.cookies.post_login_redirect) {
+                    res.clearCookie('post_login_redirect');
+                }
                 next();
             } else {
                 res.clearCookie('user_id'); // Clear invalid cookie
-                res.redirect('/');
+                // If not authenticated (invalid cookie), handle redirection based on request type
+                if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                    return res.status(401).json({ message: 'Unauthorized: Please log in.' });
+                } else {
+                    // For direct page access, store original URL and redirect to login
+                    if (req.originalUrl && req.originalUrl !== '/') {
+                        res.cookie('post_login_redirect', req.originalUrl, { httpOnly: true, maxAge: 1000 * 60 * 5 }); // Valid for 5 minutes
+                    }
+                    res.redirect('/');
+                }
             }
         } catch (error) {
             console.error("Error authenticating user:", error);
             res.clearCookie('user_id');
-            res.redirect('/');
+            // If error during auth, handle redirection based on request type
+            if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                return res.status(401).json({ message: 'Unauthorized: Please log in.' });
+            } else {
+                if (req.originalUrl && req.originalUrl !== '/') {
+                    res.cookie('post_login_redirect', req.originalUrl, { httpOnly: true, maxAge: 1000 * 60 * 5 }); // Valid for 5 minutes
+                }
+                res.redirect('/');
+            }
         }
     } else {
-        res.redirect('/');
+        // No user_id cookie. Not authenticated.
+        if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+            return res.status(401).json({ message: 'Unauthorized: Please log in.' });
+        } else {
+            if (req.originalUrl && req.originalUrl !== '/') {
+                res.cookie('post_login_redirect', req.originalUrl, { httpOnly: true, maxAge: 1000 * 60 * 5 }); // Valid for 5 minutes
+            }
+            res.redirect('/');
+        }
     }
 }
 
@@ -40,14 +69,21 @@ async function handleLogin(req, res) {
             if (result) {
                 // Contraseña correcta
                 res.cookie('user_id', user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
-                  res.status(200).json({ 
-                    message: "Login exitoso", 
-                    user: { 
-                        id: user.id, 
-                        username: user.username,
-                        role: user.role // <-- Asegúrate que esta línea esté aquí
-                    } 
-                });
+
+                let redirectTo = '/dashboard.html'; // Default redirect path after login
+
+                // Prioritize redirect_to from POST body (e.g., from login form passing a query param)
+                if (req.body.redirect_to) {
+                    redirectTo = req.body.redirect_to;
+                } else if (req.cookies.post_login_redirect) {
+                    // Fallback to post_login_redirect cookie set by authenticateMiddleware for direct page access
+                    redirectTo = req.cookies.post_login_redirect;
+                    res.clearCookie('post_login_redirect'); // Clear the temporary cookie
+                }
+
+                // Perform a server-side redirect
+                // This will change the API contract of /api/login from returning JSON to performing a redirect.
+                return res.redirect(redirectTo);
             } else {
                 // Contraseña incorrecta
                 res.status(401).json({ error: "Usuario o contraseña incorrectos" });
