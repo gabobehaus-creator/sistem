@@ -906,7 +906,7 @@ router.get('/attendance/status', authenticateMiddleware, async (req, res) => {
     try {
         const lastAttendance = await Attendance.findOne({
             where: { user_id: req.user.id },
-            order: [['timestamp', 'DESC']]
+            order: [['id', 'DESC']]
         });
 
         const lastAttendanceType = lastAttendance ? lastAttendance.action_type : null;
@@ -947,7 +947,7 @@ router.post('/attendance/mark', authenticateMiddleware, async (req, res) => {
         // Check last attendance to prevent consecutive INs or OUTs
         const lastAttendance = await Attendance.findOne({
             where: { user_id: userId },
-            order: [['timestamp', 'DESC']]
+            order: [['id', 'DESC']]
         });
 
         if (lastAttendance && lastAttendance.action_type === actionType) {
