@@ -13,14 +13,14 @@ const { getMonthlyOccupancy } = require('../services/monthly-occupancy-service')
 
 // Add imports for Gemini API
 const fs = require('fs');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Load SQL schema for system prompt
 const SQL_SCHEMA = fs.readFileSync('src/models/model.txt', 'utf8');
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); // API key from environment variable
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+//const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); // API key from environment variable
+//const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 // System prompt for Gemini
 const SYSTEM_PROMPT = `You are a SQL query generator. Your task is to translate natural language questions into *safe, read-only* SQL queries for an SQLite database based on the provided schema.
@@ -1210,74 +1210,6 @@ router.delete('/minibar-consumptions/:id', async (req, res) => {
     }
 });
 
-// New endpoint for natural language to SQL query
-router.post('/sql-from-text', authorizeRoles(['admin', 'supervisor']), async (req, res) => {
-    const { natural_language_query } = req.body;
-
-    if (!natural_language_query) {
-        return res.status(400).json({ error: "Falta la consulta en lenguaje natural." });
-    }
-
-    try {
-        const result = await model.generateContent({
-            contents: [{
-                role: "user",
-                parts: [
-                    { text: SYSTEM_PROMPT },
-                    { text: `Translate this natural language query into a SQL SELECT statement: "${natural_language_query}"` }
-                ]
-            }],
-            safetySettings: [
-                {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                },
-                {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                },
-                {
-                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                },
-                {
-                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                },
-            ],
-        });
-
-        let generatedSql = result.response.text().trim();
-
-        // Basic validation for read-only SELECT queries
-        const forbiddenKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE', 'REPLACE', 'GRANT', 'REVOKE', 'ATTACH', 'DETACH', 'PRAGMA', 'VACUUM'];
-        const uppercasedSql = generatedSql.toUpperCase();
-
-        if (generatedSql === 'INVALID_QUERY' || !uppercasedSql.startsWith('SELECT')) {
-            return res.status(400).json({ error: "La consulta no pudo ser traducida a una declaración SELECT válida o fue considerada insegura." });
-        }
-
-        const isForbidden = forbiddenKeywords.some(keyword => uppercasedSql.includes(keyword));
-        if (isForbidden) {
-             return res.status(400).json({ error: "La consulta generada contiene operaciones no permitidas." });
-        }
-        
-        // Execute the safe, read-only SQL query
-        const queryResults = await sequelize.query(generatedSql, {
-            type: sequelize.QueryTypes.SELECT
-        });
-
-        res.json({
-            message: "Consulta SQL ejecutada exitosamente.",
-            sql_query: generatedSql,
-            data: queryResults
-        });
-
-    } catch (error) {
-        console.error("Error al procesar la consulta en lenguaje natural:", error);
-        res.status(500).json({ error: "Error interno del servidor al procesar la consulta." });
-    }
-});
 
 // Exporta el router para que server.js lo pueda usar
 module.exports = router;
