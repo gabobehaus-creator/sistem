@@ -104,13 +104,13 @@ class PanelFichajeMovil extends HTMLElement {
         };
 
         // Ensure QRCode library is loaded before use
-        if (typeof QRCode === 'undefined') {
-            console.error('QRCode library not loaded. Please ensure qrcode.min.js is included in your HTML.');
-            this.showMessage('Error: Librería de QR no cargada. Por favor, recarga la página.', 'error');
+        if (typeof window.QRCode === 'undefined') {
+            console.error('QRCode library not loaded. Please ensure qrcode.min.js is included in your HTML and window.QRCode is available.');
+            this.showMessage('Error: Librería de QR no cargada (window.QRCode no encontrado). Por favor, recarga la página.', 'error');
             return;
         }
 
-        this.qrCodeInstance = new QRCode(qrContainer, {
+        this.qrCodeInstance = new window.QRCode(qrContainer, {
             text: JSON.stringify(this.qrCodeData), // Send JSON string as QR data
             width: 180,
             height: 180,
