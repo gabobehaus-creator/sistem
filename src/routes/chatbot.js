@@ -50,7 +50,7 @@ ${JSON.stringify(contextData)}
 Responde de manera amable, profesional y precisa a las consultas del recepcionista o administrador. Puedes informar sobre habitaciones disponibles u ocupadas, calcular totales, estimar presupuestos basados en los precios de las habitaciones y dar reportes rápidos.`;
 
         // Call Gemini API using fetch with gemini-pro model
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -66,7 +66,7 @@ Responde de manera amable, profesional y precisa a las consultas del recepcionis
             const reply = data.candidates[0].content.parts[0].text;
             res.json({ reply });
         } else {
-            res.status(500).json({ error: 'No se pudo obtener respuesta de Gemini.', details: data });
+            res.status(500).json({ error: 'No se pudo obtener respuesta.', details: data });
         }
 
     } catch (error) {
