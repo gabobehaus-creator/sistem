@@ -10,6 +10,7 @@ const app = express();
 const seedDatabase = require('./src/utils/seeder'); // Importamos el seeder
 const { authenticateMiddleware, handleLogin, handleLogout } = require('./src/auth'); 
 const apiRoutes = require('./src/routes/api'); 
+const chatbotRoutes = require('./src/routes/chatbot');
 
 app.use(express.json());
 app.use(cookieParser());
@@ -61,6 +62,7 @@ app.get('/attendance-report.html', authenticateMiddleware, (req, res) => {
 
 // ----------------------------------------
 app.use('/api', apiRoutes);
+app.use('/api/chatbot', authenticateMiddleware, chatbotRoutes);
 
 
 // --- Iniciar DB y Servidor ---
