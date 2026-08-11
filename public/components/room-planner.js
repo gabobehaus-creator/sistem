@@ -51,11 +51,6 @@ class RoomPlanner extends HTMLElement {
             .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
             .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
 
-            /*
-            This block contains a commented-out section for .
-            The request is to enable this functionality. The following changes
-            will move this logic out of comments and integrate it properly.
-            */
             .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
             .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; }
             </style>
@@ -126,7 +121,7 @@ class RoomPlanner extends HTMLElement {
         this.currentViewDate.setMonth(this.currentViewDate.getMonth() + offset);
         this.renderView();
     }
-//test
+
     renderView() {
         this.currentYear = this.currentViewDate.getFullYear();
         this.currentMonthIndex = this.currentViewDate.getMonth();
@@ -135,8 +130,6 @@ class RoomPlanner extends HTMLElement {
         this.shadowRoot.getElementById('currentMonthDisplay').textContent = `${this.monthNames[this.currentMonthIndex]} ${this.currentYear}`;
         this.renderGrid();
     }
-
-     // ... dentro de RoomPlanner class ...
 
     // Helper para obtener la fecha y hora de inicio real de una reserva
     getBookingActualStartDateTime(booking) {
@@ -198,7 +191,7 @@ class RoomPlanner extends HTMLElement {
         });
     }
 
-    // Calcula cuántos slots ocupa una reserva a partir de un slot dado
+    // Calcula cuántos slots ocupa una reserva a partir de un slot dado, limitado al mes actual
     getBookingSpanInSlots(booking, currentDay, initialTimeSlot) {
         const actualBookingStart = this.getBookingActualStartDateTime(booking);
         const actualBookingEnd = this.getBookingActualEndDateTime(booking);
@@ -224,8 +217,6 @@ class RoomPlanner extends HTMLElement {
             } else {
                 break; // No more overlap
             }
-            // If the booking fully covers the current slot, continue to the next
-            // If the booking ends mid-slot, stop counting.
             if (slotStart >= actualBookingEnd) break;
         }
         return span;
@@ -253,7 +244,6 @@ class RoomPlanner extends HTMLElement {
 
         // 2. Day Headers (Row 1) and Time Slot Sub-headers (Row 2)
         for (let i = 1; i <= this.daysInMonth; i++) {
-            const date = new Date(this.currentYear, this.currentMonthIndex, i);
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
             const isToday = isCurrentMonth && i === this.today.getDate();
             
@@ -303,7 +293,6 @@ class RoomPlanner extends HTMLElement {
                 grid.appendChild(roomHeaderCell);
 
                 for (let i = 1; i <= this.daysInMonth; i++) {
-                    const dateString = `${this.currentYear}-${String(this.currentMonthIndex + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                     const day = new Date(this.currentYear, this.currentMonthIndex, i);
                     const isWeekend = (day.getDay() === 0 || day.getDay() === 6);
                     const isToday = isCurrentMonth && i === this.today.getDate();
@@ -348,12 +337,8 @@ class RoomPlanner extends HTMLElement {
                 
                 ['morning', 'afternoon'].forEach(timeSlot => {
                     const slotStart = this.getSlotStartDateTime(dateString, timeSlot);
-                    const slotEnd = this.getSlotEndDateTime(dateString, timeSlot);
 
                     // Check if the current slot is the *start* of this booking's presence in the planner.
-                    // This means `actualBookingStart` is less than or equal to `slotStart`, AND
-                    // `slotStart` is within the month being viewed.
-                    // And we haven't rendered this booking's span already.
                     if (actualBookingStart <= slotStart && actualBookingStart < actualBookingEnd && slotStart.getMonth() === this.currentMonthIndex) {
                         // Find the corresponding cell element
                         const cellSelector = `[data-room-id="${roomId}"][data-day="${i}"][data-time-slot="${timeSlot}"]`;
@@ -413,8 +398,6 @@ class RoomPlanner extends HTMLElement {
             
             // Usamos los datos de la reserva existente o valores por defecto para NUEVA RESERVA
             startDate: existingBooking ? existingBooking.start_date : formattedDate,
-            // For a new booking, if a timeSlot is selected, it should start with that.
-            // If it's an existing booking, use its time_slot.
             timeSlot: existingBooking ? existingBooking.time_slot : timeSlot, 
             endDate: existingBooking ? existingBooking.end_date : '', 
             clientName: existingBooking ? existingBooking.client_name : '',
@@ -447,4 +430,3 @@ class RoomPlanner extends HTMLElement {
     }
 } 
 customElements.define('room-planner', RoomPlanner);
-
