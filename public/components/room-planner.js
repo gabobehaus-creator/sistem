@@ -322,7 +322,7 @@ class RoomPlanner extends HTMLElement {
             });
         }
 
-        // 4. Overlay bookings onto the grid
+        // 4. Overlay bookings onto the grid and remove covered DOM elements
         const renderedBookings = new Set(); // To track which bookings have been visually rendered with span
         this.bookings.forEach(booking => {
             const roomId = booking.room_id;
@@ -359,6 +359,22 @@ class RoomPlanner extends HTMLElement {
                                 cell.style.gridColumn = `span ${spanInSlots}`;
                                 cell.classList.add('booking-merged');
                                 renderedBookings.add(booking.id); // Mark as rendered
+
+                                // Remove covered cells from the DOM so grid columns stay perfectly aligned
+                                let removeDay = i;
+                                let removeSlot = timeSlot;
+                                for (let s = 1; s < spanInSlots; s++) {
+                                    if (removeSlot === 'morning') {
+                                        removeSlot = 'afternoon';
+                                    } else {
+                                        removeSlot = 'morning';
+                                        removeDay++;
+                                    }
+                                    const cellToRemove = grid.querySelector(`[data-room-id="${roomId}"][data-day="${removeDay}"][data-time-slot="${removeSlot}"]`);
+                                    if (cellToRemove) {
+                                        cellToRemove.remove();
+                                    }
+                                }
                             }
                         }
                     }
