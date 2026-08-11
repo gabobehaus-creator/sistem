@@ -14,28 +14,31 @@ class BookingDetailsForm extends HTMLElement {
                 .price-per-night-input { width: 50% !important; display: inline-block; }
                 .client-type-toggle { display: flex; align-items: center; margin-bottom: 10px; }
                 .client-type-toggle input[type="checkbox"] { margin-right: 10px; width: auto; }
-                .hidden { display: none; }
+                .hidden-field { display: none; }
                 
                 /* Estilos para el botón y modal de cambio de habitación */
                 .room-header-container { display: flex; justify-content: space-between; align-items: center; }
                 .change-room-link { color: #007bff; text-decoration: underline; cursor: pointer; font-size: 0.9em; font-weight: normal; }
                 .change-room-link:hover { color: #0056b3; }
 
-                /* Modal de selección de habitación */
-                .modal-overlay {
+                /* Modal de selección de habitación con clases ultra específicas para evitar colisiones */
+                .room-change-modal-overlay {
                     position: fixed;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.5);
+                    background: rgba(0,0,0,0.6);
                     display: flex; justify-content: center; align-items: center;
-                    z-index: 10000;
+                    z-index: 20000; /* Mayor z-index para estar por encima de todo */
                 }
-                .modal-content {
+                .room-change-hidden {
+                    display: none !important;
+                }
+                .room-change-modal-content {
                     background: white;
                     padding: 20px;
                     border-radius: 8px;
                     width: 90%;
                     max-width: 400px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
                     max-height: 80vh;
                     overflow-y: auto;
                 }
@@ -91,7 +94,7 @@ class BookingDetailsForm extends HTMLElement {
                 <label for="isCompanyCheckbox">Reservado por Empresa</label>
             </div>
             
-            <div class="form-group hidden" id="companyDropdownGroup">
+            <div class="form-group hidden-field" id="companyDropdownGroup">
                 <label for="companySelect">Seleccionar Empresa:</label>
                 <select id="companySelect"></select>
             </div>
@@ -155,8 +158,8 @@ class BookingDetailsForm extends HTMLElement {
             <!-- FIN CAMPO DE NOTAS -->
 
             <!-- MODAL SECUNDARIO PARA SELECCIONAR HABITACIÓN -->
-            <div id="roomModal" class="modal-overlay hidden">
-                <div class="modal-content">
+            <div id="roomModal" class="room-change-modal-overlay room-change-hidden">
+                <div class="room-change-modal-content">
                     <h3 class="modal-title">Seleccionar Habitación</h3>
                     <ul class="room-list" id="roomListContainer">
                         <!-- Se cargará dinámicamente -->
@@ -184,12 +187,20 @@ class BookingDetailsForm extends HTMLElement {
             this.dispatchEvent(new CustomEvent('details-changed', { bubbles: true, composed: true }));
         });
 
-        // Eventos para el modal de cambio de habitación
-        this.shadowRoot.getElementById('openRoomModalBtn').addEventListener('click', () => {
+        // Eventos para el modal de cambio de habitación (deteniendo propagación)
+        this.shadowRoot.getElementById('openRoomModalBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.openRoomSelectionModal();
         });
-        this.shadowRoot.getElementById('closeRoomModalBtn').addEventListener('click', () => {
+        this.shadowRoot.getElementById('closeRoomModalBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.closeRoomSelectionModal();
+        });
+        this.shadowRoot.getElementById('roomModal').addEventListener('click', (e) => {
+            // Evitar que clics de fondo cierren o afecten modales superiores
+            e.stopPropagation();
         });
     }
 
@@ -216,7 +227,7 @@ class BookingDetailsForm extends HTMLElement {
     }
 
     toggleCompanySelection(isCompany) {
-        this.shadowRoot.getElementById('companyDropdownGroup').classList.toggle('hidden', !isCompany);
+        this.shadowRoot.getElementById('companyDropdownGroup').classList.toggle('hidden-field', !isCompany);
         if (!isCompany) {
             this.shadowRoot.getElementById('companySelect').value = '';
         }
@@ -226,7 +237,7 @@ class BookingDetailsForm extends HTMLElement {
         const modal = this.shadowRoot.getElementById('roomModal');
         const container = this.shadowRoot.getElementById('roomListContainer');
         container.innerHTML = '<li>Cargando habitaciones...</li>';
-        modal.classList.remove('hidden');
+        modal.classList.remove('room-change-hidden');
 
         try {
             const response = await fetch('/api/rooms');
@@ -244,7 +255,7 @@ class BookingDetailsForm extends HTMLElement {
     }
 
     closeRoomSelectionModal() {
-        this.shadowRoot.getElementById('roomModal').classList.add('hidden');
+        this.shadowRoot.getElementById('roomModal').classList.add('room-change-hidden');
     }
 
     renderRoomsForSelection() {
@@ -263,7 +274,8 @@ class BookingDetailsForm extends HTMLElement {
                 <span>${room.name}</span>
                 <span class="room-price">$${room.price ? parseFloat(room.price).toFixed(2) : '0.00'}</span>
             `;
-            li.addEventListener('click', () => {
+            li.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.selectNewRoom(room);
             });
             container.appendChild(li);
