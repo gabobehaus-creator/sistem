@@ -127,13 +127,13 @@ class PanelFichajeMovil extends HTMLElement {
     }
 
     generateAndDisplayQRCode() {
-        const qrContainer = this.shadowRoot.getElementById('qrCodeContainer');
+        const qrContainer = this.shadowRoot.querySelector('#qrCodeContainer');
         qrContainer.innerHTML = ''; // Clear previous QR code
 
         const token = this.generateToken();
         
         // URL con el parámetro 'token' esperado por attendance-marker-component.js
-        this.qrCodeData = `${window.location.origin}/attendance-marker.html?token=${token}`;
+        this.qrCodeData = `https://nodejs-production-9f3a6.up.railway.app/attendance-marker.html?token=${token}`;
 
         // Actualizar enlace directo de respaldo para teléfonos con cámaras defectuosas
         const directLink = this.shadowRoot.getElementById('directLink');
@@ -155,7 +155,8 @@ class PanelFichajeMovil extends HTMLElement {
             height: 400,
             colorDark: "#000000",
             colorLight: "#ffffff",
-            correctLevel: window.QRCode.CorrectLevel.L 
+            correctLevel: window.QRCode.CorrectLevel.L,
+            
         });
 
         const timerElement = this.shadowRoot.getElementById('qrRefreshTimer');
