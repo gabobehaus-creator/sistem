@@ -1,6 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { Room, Invoice, Expense, Booking, User } = require('../database'); // Adjust based on your models
+
+// Intentamos importar los modelos desde la ubicación correcta del proyecto
+let Room, Invoice, Expense, Booking, User;
+try {
+    const db = require('../database');
+    Room = db.Room;
+    Invoice = db.Invoice;
+    Expense = db.Expense;
+    Booking = db.Booking;
+    User = db.User;
+} catch (e) {
+    // Fallback si los modelos se exportan individualmente o desde models
+    try {
+        Room = require('../models/room');
+        Invoice = require('../models/invoice');
+        Expense = require('../models/expense');
+        Booking = require('../models/booking');
+        User = require('../models/user');
+    } catch (err) {
+        console.error("No se pudieron cargar los modelos de la base de datos:", err);
+    }
+}
 
 router.post('/chat', async (req, res) => {
     try {
@@ -11,10 +32,10 @@ router.post('/chat', async (req, res) => {
             return res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en el servidor.' });
         }
 
-        // 1. Gather context from database
-        const rooms = await Room.findAll();
-        const invoices = await Invoice.findAll({ limit: 50 });
-        const expenses = await Expense.findAll({ limit: 50 });
+        // 1. Gather context from database safely
+        const rooms = Room ? await Room.findAll() : [];
+        const invoices = Invoice ? await Invoice.findAll({ limit: 50 }) : [];
+        const expenses = Expense ? await Expense.findAll({ limit: 50 }) : [];
 
         const contextData = {
             rooms: rooms.map(r => ({ name: r.name, category: r.category, status: r.clean_status, price: r.price })),
