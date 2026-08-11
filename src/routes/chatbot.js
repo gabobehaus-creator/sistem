@@ -32,13 +32,15 @@ router.post('/chat', async (req, res) => {
             return res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en el servidor.' });
         }
 
-        // 1. Gather context from database safely
+        // 1. Gather context from database safely including Bookings
         const rooms = Room ? await Room.findAll() : [];
+        const bookings = Booking ? await Booking.findAll() : [];
         const invoices = Invoice ? await Invoice.findAll({ limit: 50 }) : [];
         const expenses = Expense ? await Expense.findAll({ limit: 50 }) : [];
 
         const contextData = {
-            rooms: rooms.map(r => ({ name: r.name, category: r.category, status: r.clean_status, price: r.price })),
+            rooms: rooms.map(r => ({ id: r.id, name: r.name, category: r.category, status: r.clean_status, price: r.price })),
+            bookings: bookings.map(b => ({ id: b.id, roomId: b.room_id || b.roomId, status: b.status, checkIn: b.check_in || b.checkIn, checkOut: b.check_out || b.checkOut })),
             totalInvoicesCount: invoices.length,
             recentInvoices: invoices.map(i => ({ id: i.id, total: i.total, date: i.issue_date })),
             recentExpenses: expenses.map(e => ({ description: e.description, amount: e.amount, date: e.date }))
@@ -47,9 +49,9 @@ router.post('/chat', async (req, res) => {
         const systemPrompt = `Eres el asistente virtual inteligente de un hotel. Tienes acceso a la siguiente información actual del sistema en formato JSON:
 ${JSON.stringify(contextData)}
 
-Responde de manera amable, profesional y precisa a las consultas del recepcionista o administrador. Puedes informar sobre habitaciones disponibles u ocupadas, calcular totales, estimar presupuestos basados en los precios de las habitaciones y dar reportes rápidos.`;
+Responde de manera amable, profesional y precisa a las consultas del recepcionista o administrador. Puedes informar sobre habitaciones disponibles u ocupadas (revisando el estado de las reservas y habitaciones), calcular totales, estimar presupuestos basados en los precios de las habitaciones y dar reportes rápidos.`;
 
-        // Call Gemini API using fetch with gemini-pro model
+        // Call Gemini API using fetch with gemini-2.5-flash model
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
