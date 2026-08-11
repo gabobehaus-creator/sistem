@@ -115,8 +115,17 @@ class LoginForm extends HTMLElement {
                 if (data.user && data.user.role) {
                     localStorage.setItem('userRole', data.user.role); 
                 }
-                // Redirecciona dinámicamente a la URL provista por el servidor (ej. /dashboard o la página de fichaje)
-                window.location.href = data.redirectTo || '/dashboard';
+
+                // Verificar si hay un parámetro redirect_to en la URL (ej. la pantalla de fichaje)
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirectTo = urlParams.get('redirect_to');
+
+                if (redirectTo) {
+                    window.location.href = decodeURIComponent(redirectTo);
+                } else {
+                    // Redirecciona a la URL provista por el servidor o al dashboard por defecto
+                    window.location.href = data.redirectTo || '/dashboard';
+                }
             } else {
                 const errorData = await response.json();
                 errorMessage.textContent = errorData.error;
