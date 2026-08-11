@@ -1,9 +1,10 @@
-// public/components/booking-details-form.js (COMPLETO Y ACTUALIZADO CON EMAIL)
+// public/components/booking-details-form.js (COMPLETO Y ACTUALIZADO CON CAMBIO DE HABITACIÓN)
 class BookingDetailsForm extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
         this.clients = [];
+        this.rooms = [];
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -14,11 +15,64 @@ class BookingDetailsForm extends HTMLElement {
                 .client-type-toggle { display: flex; align-items: center; margin-bottom: 10px; }
                 .client-type-toggle input[type="checkbox"] { margin-right: 10px; width: auto; }
                 .hidden { display: none; }
+                
+                /* Estilos para el botón y modal de cambio de habitación */
+                .room-header-container { display: flex; justify-content: space-between; align-items: center; }
+                .change-room-link { color: #007bff; text-decoration: underline; cursor: pointer; font-size: 0.9em; font-weight: normal; }
+                .change-room-link:hover { color: #0056b3; }
+
+                /* Modal de selección de habitación */
+                .modal-overlay {
+                    position: fixed;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex; justify-content: center; align-items: center;
+                    z-index: 10000;
+                }
+                .modal-content {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 400px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                    max-height: 80vh;
+                    overflow-y: auto;
+                }
+                .modal-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                .room-list { list-style: none; padding: 0; margin: 0; }
+                .room-item {
+                    padding: 10px;
+                    border: 1px solid #ddd;
+                    margin-bottom: 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .room-item:hover { background: #f0f7ff; border-color: #007bff; }
+                .room-item .room-price { font-size: 0.9em; color: #666; }
+                .close-modal-btn {
+                    width: 100%;
+                    padding: 10px;
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 15px;
+                }
+                .close-modal-btn:hover { background: #5a6268; }
             </style>
             
             <input type="hidden" id="roomIdInput">
             <div class="form-group">
-                <label>Habitación:</label>
+                <div class="room-header-container">
+                    <label>Habitación:</label>
+                    <span class="change-room-link" id="openRoomModalBtn">Cambiar de habitación</span>
+                </div>
                 <input type="text" id="roomNameDisplay" readonly>
             </div>
             <div class="form-group">
@@ -99,6 +153,17 @@ class BookingDetailsForm extends HTMLElement {
             </div>
             
             <!-- FIN CAMPO DE NOTAS -->
+
+            <!-- MODAL SECUNDARIO PARA SELECCIONAR HABITACIÓN -->
+            <div id="roomModal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <h3 class="modal-title">Seleccionar Habitación</h3>
+                    <ul class="room-list" id="roomListContainer">
+                        <!-- Se cargará dinámicamente -->
+                    </ul>
+                    <button type="button" class="close-modal-btn" id="closeRoomModalBtn">Cancelar</button>
+                </div>
+            </div>
         `;
     }
 
@@ -117,6 +182,14 @@ class BookingDetailsForm extends HTMLElement {
         // Evento para emitir 'details-changed' cuando cambia la franja horaria
         this.shadowRoot.getElementById('timeSlotSelect').addEventListener('change', () => {
             this.dispatchEvent(new CustomEvent('details-changed', { bubbles: true, composed: true }));
+        });
+
+        // Eventos para el modal de cambio de habitación
+        this.shadowRoot.getElementById('openRoomModalBtn').addEventListener('click', () => {
+            this.openRoomSelectionModal();
+        });
+        this.shadowRoot.getElementById('closeRoomModalBtn').addEventListener('click', () => {
+            this.closeRoomSelectionModal();
         });
     }
 
@@ -147,6 +220,69 @@ class BookingDetailsForm extends HTMLElement {
         if (!isCompany) {
             this.shadowRoot.getElementById('companySelect').value = '';
         }
+    }
+
+    async openRoomSelectionModal() {
+        const modal = this.shadowRoot.getElementById('roomModal');
+        const container = this.shadowRoot.getElementById('roomListContainer');
+        container.innerHTML = '<li>Cargando habitaciones...</li>';
+        modal.classList.remove('hidden');
+
+        try {
+            const response = await fetch('/api/rooms');
+            if (response.ok) {
+                const data = await response.json();
+                this.rooms = data.data;
+                this.renderRoomsForSelection();
+            } else {
+                container.innerHTML = '<li>Error al cargar habitaciones.</li>';
+            }
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = '<li>Error de conexión.</li>';
+        }
+    }
+
+    closeRoomSelectionModal() {
+        this.shadowRoot.getElementById('roomModal').classList.add('hidden');
+    }
+
+    renderRoomsForSelection() {
+        const container = this.shadowRoot.getElementById('roomListContainer');
+        container.innerHTML = '';
+
+        if (this.rooms.length === 0) {
+            container.innerHTML = '<li>No hay habitaciones registradas.</li>';
+            return;
+        }
+
+        this.rooms.forEach(room => {
+            const li = document.createElement('li');
+            li.className = 'room-item';
+            li.innerHTML = `
+                <span>${room.name}</span>
+                <span class="room-price">$${room.price ? parseFloat(room.price).toFixed(2) : '0.00'}</span>
+            `;
+            li.addEventListener('click', () => {
+                this.selectNewRoom(room);
+            });
+            container.appendChild(li);
+        });
+    }
+
+    selectNewRoom(room) {
+        this.shadowRoot.getElementById('roomIdInput').value = room.id;
+        this.shadowRoot.getElementById('roomNameDisplay').value = room.name;
+        
+        // Si la habitación tiene un precio por defecto, actualizamos el input de precio por noche
+        if (room.price) {
+            this.shadowRoot.getElementById('pricePerNight').value = parseFloat(room.price).toFixed(2);
+        }
+
+        this.closeRoomSelectionModal();
+        
+        // Disparamos el evento de cambio para que el resto de la UI se entere
+        this.dispatchEvent(new CustomEvent('details-changed', { bubbles: true, composed: true }));
     }
 
     // Método público para establecer datos iniciales (Añadimos email)
