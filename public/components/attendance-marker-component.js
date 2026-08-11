@@ -109,34 +109,33 @@ class AttendanceMarkerComponent extends HTMLElement {
             return;
         }
 
+        const redirectToLogin = () => {
+            const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/?redirect_to=${currentPath}`;
+        };
+
         // Check if the user is authenticated and get their last attendance status, passing the token
         try {
             const response = await fetch(`/api/attendance/status?token=${encodeURIComponent(this.qrToken)}`);
             
             if (response.status === 401 || response.status === 403) {
-                // Not authenticated, redirect to login page (main page)
-                // Append the current page's full URL as a query parameter for redirection after login
-                const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
-                window.location.href = `/?redirect_to=${currentPath}`;
+                // Not authenticated or session missing, redirect to login page
+                redirectToLogin();
                 return;
             }
 
             if (!response.ok) {
-                let errorMessage = 'Error al verificar la autenticación.';
-                try {
-                    const errorData = await response.json();
-                    if (errorData && errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch (e) {
-                    // Si no es JSON válido
-                }
-                this.showMessage(errorMessage, 'error');
-                this.disableButtons();
+                // Si la respuesta no es OK y es un posible fallo de autenticación/sesión, redirigir al login
+                redirectToLogin();
                 return;
             }
 
             const data = await response.json();
+            if (!data || !data.user) {
+                redirectToLogin();
+                return;
+            }
+
             this.userName = data.user.username;
             this.lastAttendance = data.lastAttendanceType; // 'IN', 'OUT', or null
             this.updateUI();
@@ -144,8 +143,8 @@ class AttendanceMarkerComponent extends HTMLElement {
 
         } catch (error) {
             console.error('Error checking authentication status:', error);
-            this.showMessage('Error de conexión al verificar el estado de autenticación.', 'error');
-            this.disableButtons();
+            // Ante cualquier fallo en la verificación de estado/sesión por primera vez, redirigir al login
+            redirectToLogin();
         }
     }
 
