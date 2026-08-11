@@ -1,28 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-// Intentamos importar los modelos desde la ubicación correcta del proyecto
-let Room, Invoice, Expense, Booking, User;
-try {
-    const db = require('../database');
-    Room = db.Room;
-    Invoice = db.Invoice;
-    Expense = db.Expense;
-    Booking = db.Booking;
-    User = db.User;
-} catch (e) {
-    // Fallback si los modelos se exportan individualmente o desde models
-    try {
-        Room = require('../models/room');
-        Invoice = require('../models/invoice');
-        Expense = require('../models/expense');
-        Booking = require('../models/booking');
-        User = require('../models/user');
-    } catch (err) {
-        console.error("No se pudieron cargar los modelos de la base de datos:", err);
-    }
-}
-
 router.post('/chat', async (req, res) => {
     try {
         const { message } = req.body;
@@ -32,27 +10,44 @@ router.post('/chat', async (req, res) => {
             return res.status(500).json({ error: 'GEMINI_API_KEY no está configurada en el servidor.' });
         }
 
-        // 1. Gather context from database safely including Bookings
-        const rooms = Room ? await Room.findAll() : [];
-        const bookings = Booking ? await Booking.findAll() : [];
-        const invoices = Invoice ? await Invoice.findAll({ limit: 50 }) : [];
-        const expenses = Expense ? await Expense.findAll({ limit: 50 }) : [];
+        // Try to load all models dynamically from database instance or individual files
+        let dbModels = {};
+        try {
+            const db = require('../database');
+            if (db.sequelize && db.sequelize.models) {
+                dbModels = db.sequelize.models;
+            } else {
+                dbModels = db;
+            }
+        } catch (e) {
+            console.error("Error loading db models:", e);
+        }
 
-        const contextData = {
-            rooms: rooms.map(r => ({ id: r.id, name: r.name, category: r.category, status: r.clean_status, price: r.price })),
-            bookings: bookings.map(b => ({ id: b.id, roomId: b.room_id || b.roomId, status: b.status, checkIn: b.check_in || b.checkIn, checkOut: b.check_out || b.checkOut })),
-            totalInvoicesCount: invoices.length,
-            recentInvoices: invoices.map(i => ({ id: i.id, total: i.total, date: i.issue_date })),
-            recentExpenses: expenses.map(e => ({ description: e.description, amount: e.amount, date: e.date }))
-        };
+        // Gather data from all available models in the system automatically
+        const contextData = {};
+        for (const [modelName, modelObj] of Object.entries(dbModels)) {
+            if (modelObj && typeof modelObj.findAll === 'function') {
+                try {
+                    const records = await modelObj.findAll({ limit: 100 });
+                    contextData[modelName] = records.map(r => r.toJSON ? r.toJSON() : r);
+                } catch (err) {
+                    console.warn(`Could not fetch data for model ${modelName}:`, err.message);
+                }
+            }
+        }
 
-        const systemPrompt = `Eres el asistente virtual inteligente de un hotel. Tienes acceso a la siguiente información actual del sistema en formato JSON:
+        const systemPrompt = `Eres el asistente virtual experto e inteligente de un hotel con acceso total a toda la base de datos y ecosistema del sistema de gestión hotelera. 
+Tienes acceso a la siguiente información actual del sistema en formato JSON (que incluye habitaciones, reservas, clientes, facturas, gastos, minibar, usuarios, registros de asistencia/fichajes y cualquier otra entidad disponible):
+
 ${JSON.stringify(contextData)}
 
-Responde de manera amable, profesional y precisa a las consultas del recepcionista o administrador. Puedes informar sobre habitaciones disponibles u ocupadas (revisando el estado de las reservas y habitaciones), calcular totales, estimar presupuestos basados en los precios de las habitaciones y dar reportes rápidos.`;
+Instrucciones:
+- Responde de manera amable, profesional, precisa y detallada a las consultas del recepcionista o administrador.
+- Puedes informar sobre habitaciones disponibles u ocupadas, estado del minibar, stock, reportes de asistencia de empleados por fecha/hora, ganancias y facturación, presupuestos, gastos y cualquier dato presente en el sistema.
+- Si te piden calcular algo, hazlo basándote en los datos provistos.`;
 
-        // Call Gemini API using fetch with gemini-2.5-flash model
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        // Call Gemini API using fetch with gemini-pro model
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
