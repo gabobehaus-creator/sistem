@@ -4,6 +4,8 @@ class AttendanceReportsView extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.records = [];
         this.users = [];
+        this.currentPage = 1;
+        this.itemsPerPage = 20;
     }
 
     connectedCallback() {
@@ -43,6 +45,7 @@ class AttendanceReportsView extends HTMLElement {
             if (response.ok) {
                 const result = await response.json();
                 this.records = result.data || [];
+                this.currentPage = 1;
                 this.renderTable();
             } else {
                 console.error("Error al obtener el reporte");
@@ -68,11 +71,24 @@ class AttendanceReportsView extends HTMLElement {
         tbody.innerHTML = '';
 
         if (this.records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se encontraron registros.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
+            this.renderPaginationControls(0);
             return;
         }
 
-        this.records.forEach(record => {
+        const totalPages = Math.ceil(this.records.length / this.itemsPerPage);
+        if (this.currentPage > totalPages) {
+            this.currentPage = totalPages;
+        }
+        if (this.currentPage < 1) {
+            this.currentPage = 1;
+        }
+
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        const pageRecords = this.records.slice(start, end);
+
+        pageRecords.forEach(record => {
             const tr = document.createElement('tr');
             const dateObj = new Date(record.timestamp);
             const formattedDate = dateObj.toLocaleDateString('es-AR');
@@ -94,6 +110,25 @@ class AttendanceReportsView extends HTMLElement {
             `;
             tbody.appendChild(tr);
         });
+
+        this.renderPaginationControls(totalPages);
+    }
+
+    renderPaginationControls(totalPages) {
+        const prevBtn = this.shadowRoot.getElementById('prevPageBtn');
+        const nextBtn = this.shadowRoot.getElementById('nextPageBtn');
+        const pageInfo = this.shadowRoot.getElementById('pageInfo');
+
+        if (totalPages === 0) {
+            pageInfo.textContent = 'Página 0 de 0';
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+
+        pageInfo.textContent = `Página ${this.currentPage} de ${totalPages}`;
+        prevBtn.disabled = this.currentPage <= 1;
+        nextBtn.disabled = this.currentPage >= totalPages;
     }
 
     exportCSV() {
@@ -174,6 +209,10 @@ class AttendanceReportsView extends HTMLElement {
                 button:hover {
                     background-color: #0056b3;
                 }
+                button:disabled {
+                    background-color: #cccccc;
+                    cursor: not-allowed;
+                }
                 button.export {
                     background-color: #28a745;
                 }
@@ -214,8 +253,15 @@ class AttendanceReportsView extends HTMLElement {
                 .badge.out {
                     background-color: #dc3545;
                 }
+                .pagination {
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: center;
+                    gap: 10px;
+                    margin-top: 15px;
+                }
                 @media print {
-                    .filters, button, .header button {
+                    .filters, button, .header button, .pagination {
                         display: none !important;
                     }
                 }
@@ -260,11 +306,32 @@ class AttendanceReportsView extends HTMLElement {
                     <tr><td colspan="4" style="text-align:center;">Cargando registros...</td></tr>
                 </tbody>
             </table>
+
+            <div class="pagination">
+                <button id="prevPageBtn">Anterior</button>
+                <span id="pageInfo">Página 1 de 1</span>
+                <button id="nextPageBtn">Siguiente</button>
+            </div>
         `;
 
         this.shadowRoot.getElementById('btnFilter').addEventListener('click', () => this.fetchAttendanceReport());
         this.shadowRoot.getElementById('btnExport').addEventListener('click', () => this.exportCSV());
         this.shadowRoot.getElementById('btnPrint').addEventListener('click', () => this.printPDF());
+
+        this.shadowRoot.getElementById('prevPageBtn').addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.renderTable();
+            }
+        });
+
+        this.shadowRoot.getElementById('nextPageBtn').addEventListener('click', () => {
+            const totalPages = Math.ceil(this.records.length / this.itemsPerPage);
+            if (this.currentPage < totalPages) {
+                this.currentPage++;
+                this.renderTable();
+            }
+        });
     }
 }
 
