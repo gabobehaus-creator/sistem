@@ -30,6 +30,7 @@ class DashboardMenu extends HTMLElement {
             { 
                 label: 'Reportes', icon: '📊', roles: ['admin', 'supervisor'], 
                 submenu: [
+                    { href: '/attendance-reports.html', label: 'Reportes de Asistencia', icon: '📋', roles: ['admin'] }, // Nueva entrada para Admin
                     { href: '/reports.html', label: 'Ocupacion', roles: ['admin', 'supervisor'] },
                     // Solo Admin y Supervisor pueden ver Ganancias/Pérdidas
                     { href: '/reports/profit-montly.html', label: 'Rentabilidad', roles: ['admin', 'supervisor'] },
@@ -51,8 +52,6 @@ class DashboardMenu extends HTMLElement {
                     { href: '/clients.html', label: 'Administrar Clientes', roles: ['admin', 'supervisor', 'operador'] },
                     { href: '/employees.html', label: 'Gestión Empleados', roles: ['admin', 'supervisor'] },
                     { href: '/minibar.html', label: 'Administrar Minibar', icon: '🛒', roles: ['admin', 'supervisor', 'operador'] },
-                    { href: '/qr-point.html', label: 'Punto de Fichaje (QR)', icon: '📱', roles: ['admin', 'operador'] }, // Nueva entrada para Admin/Operador
-                    { href: '/attendance-reports.html', label: 'Reportes de Asistencia', icon: '📋', roles: ['admin'] }, // Nueva entrada para Admin
                     // ESTA OPCIÓN ES SOLO PARA ADMINS:
                     { href: '/users-abm.html', label: 'Gestión Usuarios', roles: ['admin'] },
                     { href: '/shifts-planner.html', label: 'Planificador Turnos', roles: ['admin', 'supervisor', 'operador'] },
