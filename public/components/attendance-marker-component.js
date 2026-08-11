@@ -104,25 +104,34 @@ class AttendanceMarkerComponent extends HTMLElement {
         this.qrToken = urlParams.get('token');
 
         if (!this.qrToken) {
-            this.showMessage('Código QR inválido o ausente.', 'error');
-            this.disableButtons();
-            setTimeout(() => window.location.href = '/fichar.html', 3000);
+            // Si no viene con token QR (ej. ingreso manual desde el navegador), ir siempre al login
+            window.location.href = '/';
             return;
         }
 
         // Check if the user is authenticated and get their last attendance status, passing the token
         try {
             const response = await fetch(`/api/attendance/status?token=${encodeURIComponent(this.qrToken)}`);
-            if (response.status === 401) {
+            
+            if (response.status === 401 || response.status === 403) {
                 // Not authenticated, redirect to login page (main page)
                 // Append the current page's full URL as a query parameter for redirection after login
                 const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
                 window.location.href = `/?redirect_to=${currentPath}`;
                 return;
             }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                this.showMessage(errorData.message || 'Error al verificar la autenticación.', 'error');
+                let errorMessage = 'Error al verificar la autenticación.';
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    // Si no es JSON válido
+                }
+                this.showMessage(errorMessage, 'error');
                 this.disableButtons();
                 return;
             }
@@ -180,8 +189,9 @@ class AttendanceMarkerComponent extends HTMLElement {
                 body: JSON.stringify({ type: type, token: this.qrToken }),
             });
 
-            if (response.status === 401) {
-                window.location.href = '/'; // Unauthorized, redirect to login
+            if (response.status === 401 || response.status === 403) {
+                const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = `/?redirect_to=${currentPath}`;
                 return;
             }
 
