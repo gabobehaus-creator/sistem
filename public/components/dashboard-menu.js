@@ -400,7 +400,7 @@ class DashboardMenu extends HTMLElement {
             <div class="menu-container">
                 <div class="logo-area">
                     <div class="logo-icon">H</div>
-                    <div class="logo-text">Hotel Admin</div>
+                    <div class="logo-text">BeHaus</div>
                 </div>
                 
                 <button class="mobile-menu-toggle" aria-label="Abrir menú">☰</button>

@@ -42,7 +42,7 @@ body {
     flex-grow: 1;
     padding: 20px;
     /* Ajuste clave: Asumimos que el menú lateral es fijo y mide 220px */
-    margin-left: 220px; 
+    margin-left: 15%; 
 }
 
 header {
