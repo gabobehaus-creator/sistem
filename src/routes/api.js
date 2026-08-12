@@ -1004,6 +1004,26 @@ router.get('/asistencia/reporte', authorizeRoles(['admin']), async (req, res) =>
     }
 });
 
+// Endpoint para eliminar un registro de asistencia (Solo Admin)
+router.delete('/asistencia/:id', authorizeRoles(['admin']), async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deletedRows = await Attendance.destroy({
+            where: { id: id }
+        });
+
+        if (deletedRows > 0) {
+            res.status(200).json({ message: "Registro de asistencia eliminado exitosamente." });
+        } else {
+            res.status(404).json({ message: "Registro de asistencia no encontrado." });
+        }
+    } catch (error) {
+        console.error('Error al eliminar registro de asistencia:', error);
+        res.status(500).json({ error: "Error interno del servidor al eliminar el registro de asistencia." });
+    }
+});
+
 
 // --- READ: Obtener todos los usuarios (Solo Admin/Supervisor) ---
 router.get('/users/', authorizeRoles(['admin', 'supervisor']), async (req, res) => {
