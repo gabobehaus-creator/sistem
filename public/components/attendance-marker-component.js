@@ -197,10 +197,17 @@ class AttendanceMarkerComponent extends HTMLElement {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(data.message, 'success');
+                this.showMessage(`${data.message || 'Asistencia registrada correctamente.'} Cerrando en breve...`, 'success');
                 // Update lastAttendance based on the type that was just marked
                 this.lastAttendance = (type === 'ingreso' ? 'IN' : 'OUT'); 
-                this.updateUI(); // Re-enable/disable buttons based on new status
+
+                setTimeout(() => {
+                    window.close();
+                    // Fallback en caso de que el navegador bloquee window.close()
+                    setTimeout(() => {
+                        this.showMessage('Ya puedes cerrar esta ventana.', 'success');
+                    }, 500);
+                }, 3000);
             } else {
                 this.showMessage(data.message || 'Error al registrar asistencia.', 'error');
                 this.updateUI(); // Re-enable buttons if there was an error
@@ -217,8 +224,8 @@ class AttendanceMarkerComponent extends HTMLElement {
         messageArea.textContent = message;
         messageArea.className = `message ${type}`;
         messageArea.style.display = 'block';
-        // Hide message after a few seconds unless it's an error
-        if (type !== 'error') {
+        // Hide message after a few seconds unless it's an error or success closing sequence
+        if (type !== 'error' && type !== 'success') {
             setTimeout(() => {
                 messageArea.style.display = 'none';
             }, 5000);
