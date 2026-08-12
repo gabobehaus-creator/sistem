@@ -131,11 +131,11 @@ class AttendanceReportsView extends HTMLElement {
             const role = record.User ? record.User.role : '-';
 
             tr.innerHTML = `
-                <td>${username} (${role})</td>
+                <td><strong>${username}</strong> <span style="color: #666; font-size: 0.9em;">(${role})</span></td>
                 <td>${formattedDate} ${formattedTime}</td>
                 <td>${actionBadge}</td>
                 <td>${record.device || 'MOBILE'}</td>
-                <td>
+                <td class="no-print">
                     <button class="btn-delete" data-id="${record.id}">Eliminar</button>
                 </td>
             `;
@@ -192,6 +192,20 @@ class AttendanceReportsView extends HTMLElement {
     }
 
     printPDF() {
+        // Populate print-only metadata before printing
+        const startDate = this.shadowRoot.getElementById('startDate').value;
+        const endDate = this.shadowRoot.getElementById('endDate').value;
+        const userSelect = this.shadowRoot.getElementById('userSelect');
+        const selectedUserText = userSelect.options[userSelect.selectedIndex]?.text || 'Todos';
+
+        let filterText = `Filtros aplicados: Usuario: ${selectedUserText}`;
+        if (startDate || endDate) {
+            filterText += ` | Período: ${startDate || 'Inicio'} al ${endDate || 'Fin'}`;
+        }
+
+        this.shadowRoot.getElementById('printFiltersInfo').textContent = filterText;
+        this.shadowRoot.getElementById('printGenerationDate').textContent = new Date().toLocaleString('es-AR');
+
         window.print();
     }
 
@@ -200,52 +214,78 @@ class AttendanceReportsView extends HTMLElement {
             <style>
                 :host {
                     display: block;
-                    padding: 20px;
-                    font-family: Arial, sans-serif;
+                    padding: 24px;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    color: #333;
+                    background-color: #fcfcfc;
                 }
                 .header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 20px;
+                    margin-bottom: 24px;
+                    border-bottom: 1px solid #eaeaea;
+                    padding-bottom: 16px;
+                }
+                .header h2 {
+                    margin: 0;
+                    font-size: 22px;
+                    color: #1a1a1a;
+                    font-weight: 600;
+                }
+                .header-actions {
+                    display: flex;
+                    gap: 10px;
                 }
                 .filters {
                     display: flex;
-                    gap: 15px;
+                    gap: 16px;
                     flex-wrap: wrap;
-                    background: #f5f5f5;
-                    padding: 15px;
+                    background: #ffffff;
+                    padding: 20px;
                     border-radius: 8px;
-                    margin-bottom: 20px;
+                    margin-bottom: 24px;
                     align-items: flex-end;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    border: 1px solid #eaeaea;
                 }
                 .filter-group {
                     display: flex;
                     flex-direction: column;
+                    flex-grow: 1;
+                    min-width: 150px;
                 }
                 label {
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                    font-size: 14px;
+                    font-weight: 600;
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    color: #555;
                 }
                 input, select, button {
-                    padding: 8px 12px;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
+                    padding: 10px 14px;
+                    border: 1px solid #dcdcdc;
+                    border-radius: 6px;
                     font-size: 14px;
+                    transition: all 0.2s ease;
+                    outline: none;
+                }
+                input:focus, select:focus {
+                    border-color: #007bff;
+                    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
                 }
                 button {
                     background-color: #007bff;
                     color: white;
                     border: none;
                     cursor: pointer;
-                    font-weight: bold;
+                    font-weight: 600;
                 }
                 button:hover {
                     background-color: #0056b3;
                 }
                 button:disabled {
-                    background-color: #cccccc;
+                    background-color: #e0e0e0;
+                    color: #a0a0a0;
                     cursor: not-allowed;
                 }
                 button.export {
@@ -255,40 +295,57 @@ class AttendanceReportsView extends HTMLElement {
                     background-color: #218838;
                 }
                 button.print {
-                    background-color: #17a2b8;
+                    background-color: #6c757d;
                 }
                 button.print:hover {
-                    background-color: #138496;
+                    background-color: #5a6268;
                 }
                 button.btn-delete {
-                    background-color: #dc3545;
-                    padding: 4px 8px;
+                    background-color: #fff;
+                    color: #dc3545;
+                    border: 1px solid #dc3545;
+                    padding: 6px 12px;
                     font-size: 12px;
+                    border-radius: 4px;
                 }
                 button.btn-delete:hover {
-                    background-color: #bd2130;
+                    background-color: #dc3545;
+                    color: #fff;
                 }
                 table {
                     width: 100%;
                     border-collapse: collapse;
                     background: white;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    border-radius: 8px;
+                    overflow: hidden;
+                    border: 1px solid #eaeaea;
                 }
                 th, td {
-                    border: 1px solid #ddd;
-                    padding: 12px;
+                    padding: 14px 16px;
                     text-align: left;
+                    border-bottom: 1px solid #f0f0f0;
                 }
                 th {
                     background-color: #f8f9fa;
-                    font-weight: bold;
+                    font-weight: 600;
+                    color: #444;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                tr:last-child td {
+                    border-bottom: none;
                 }
                 .badge {
-                    padding: 4px 8px;
-                    border-radius: 4px;
+                    padding: 4px 10px;
+                    border-radius: 50px;
                     color: white;
-                    font-size: 12px;
-                    font-weight: bold;
+                    font-size: 11px;
+                    font-weight: 600;
+                    display: inline-block;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
                 .badge.in {
                     background-color: #28a745;
@@ -300,19 +357,110 @@ class AttendanceReportsView extends HTMLElement {
                     display: flex;
                     justify-content: flex-end;
                     align-items: center;
-                    gap: 10px;
-                    margin-top: 15px;
+                    gap: 12px;
+                    margin-top: 20px;
                 }
+                .print-header {
+                    display: none;
+                }
+
+                /* High-quality UX Print Stylesheet */
                 @media print {
-                    .filters, button, .header button, .pagination {
+                    @page {
+                        size: A4 portrait;
+                        margin: 15mm 15mm 15mm 15mm;
+                    }
+                    :host {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100% !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        background: white !important;
+                    }
+                    body {
+                        background: white !important;
+                        color: #000 !important;
+                    }
+                    /* Hide interactive elements and actions column */
+                    .filters, button, .header, .pagination, .no-print {
                         display: none !important;
+                    }
+                    /* Show elegant print header */
+                    .print-header {
+                        display: block !important;
+                        margin-bottom: 25px;
+                        border-bottom: 2px solid #1a1a1a;
+                        padding-bottom: 12px;
+                    }
+                    .print-header h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        color: #1a1a1a;
+                        font-weight: 700;
+                    }
+                    .print-header p {
+                        margin: 6px 0 0 0;
+                        font-size: 11px;
+                        color: #555;
+                    }
+                    /* Table styling optimized for print */
+                    table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        box-shadow: none !important;
+                        border: 1px solid #ccc !important;
+                        font-size: 11px !important;
+                    }
+                    th, td {
+                        padding: 10px 12px !important;
+                        border: 1px solid #ddd !important;
+                    }
+                    th {
+                        background-color: #f5f5f5 !important;
+                        color: #000 !important;
+                        font-weight: bold !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    /* Clean, ink-friendly badges for print */
+                    .badge {
+                        background: transparent !important;
+                        padding: 2px 6px !important;
+                        font-size: 10px !important;
+                        border-radius: 4px !important;
+                        font-weight: bold !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .badge.in {
+                        border: 1px solid #28a745 !important;
+                        color: #1e7e34 !important;
+                    }
+                    .badge.out {
+                        border: 1px solid #dc3545 !important;
+                        color: #bd2130 !important;
                     }
                 }
             </style>
 
+            <!-- Print-Only Header -->
+            <div class="print-header">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1>Reporte de Asistencia y Fichajes</h1>
+                        <p id="printFiltersInfo"></p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0;">Generado el: <span id="printGenerationDate"></span></p>
+                    </div>
+                </div>
+            </div>
+
             <div class="header">
                 <h2>Reporte de Asistencias y Fichajes</h2>
-                <div>
+                <div class="header-actions">
                     <button class="export" id="btnExport">Exportar a CSV/Excel</button>
                     <button class="print" id="btnPrint">Imprimir / PDF</button>
                 </div>
@@ -343,7 +491,7 @@ class AttendanceReportsView extends HTMLElement {
                         <th>Fecha y Hora</th>
                         <th>Acción</th>
                         <th>Dispositivo</th>
-                        <th>Acciones</th>
+                        <th class="no-print">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="recordsBody">
