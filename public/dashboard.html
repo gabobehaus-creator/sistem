@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <!-- Importamos la tipografía Inter para un look moderno y corporativo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <!-- Cargamos el componente del menú del dashboard -->
     <script src="components/dashboard-menu.js" defer></script>
@@ -14,13 +18,42 @@
     <script src="/components/dollar-price-widget.js" defer></script>
     <!-- Cargamos el componente del Chatbot de IA -->
     <script src="/components/hotel-chatbot.js" defer></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+        }
+        .main-content {
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 32px;
+        }
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+        header p {
+            color: #64748b;
+            margin: 4px 0 0 0;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
         <dashboard-menu></dashboard-menu>
         <main class="main-content">
             <header>
-                <h1>Bienvenido al Sistema de Gestión Hotelera</h1>
+                <h1>Panel de Control Ejecutivo</h1>
+                <p>Resumen operativo y financiero en tiempo real</p>
             </header>
             <daily-summary></daily-summary>
         </main>
