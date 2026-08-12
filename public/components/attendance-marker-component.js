@@ -5,6 +5,7 @@ class AttendanceMarkerComponent extends HTMLElement {
         this.userName = '';
         this.lastAttendance = null; // To store last attendance type (e.g., 'ingreso', 'egreso')
         this.qrToken = null;
+        this.messageTimeout = null;
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -77,8 +78,24 @@ class AttendanceMarkerComponent extends HTMLElement {
                     font-weight: bold;
                     margin-bottom: 20px;
                 }
+                .success-screen {
+                    padding: 20px 10px;
+                }
+                .success-screen h3 {
+                    color: #155724;
+                    font-size: 1.5em;
+                    margin-bottom: 15px;
+                }
+                .success-screen p {
+                    color: #155724;
+                    font-size: 1.1em;
+                    background-color: #d4edda;
+                    padding: 15px;
+                    border-radius: 5px;
+                    border: 1px solid #c3e6cb;
+                }
             </style>
-            <div>
+            <div id="mainContainer">
                 <h2>Marcar Asistencia</h2>
                 <div id="welcomeUser" class="welcome-message"></div>
                 <p id="instructionText">Por favor, selecciona si deseas registrar tu ingreso o egreso.</p>
@@ -150,29 +167,35 @@ class AttendanceMarkerComponent extends HTMLElement {
 
     updateUI() {
         const welcomeUserElement = this.shadowRoot.getElementById('welcomeUser');
-        welcomeUserElement.textContent = `¡Hola, ${this.userName}!`;
+        if (welcomeUserElement) {
+            welcomeUserElement.textContent = `¡Hola, ${this.userName}!`;
+        }
 
         const checkInButton = this.shadowRoot.getElementById('checkInButton');
         const checkOutButton = this.shadowRoot.getElementById('checkOutButton');
 
-        checkInButton.disabled = false;
-        checkOutButton.disabled = false;
+        if (checkInButton && checkOutButton) {
+            checkInButton.disabled = false;
+            checkOutButton.disabled = false;
 
-        if (this.lastAttendance === 'IN') { // Note: Backend returns 'IN'/'OUT', frontend uses 'ingreso'/'egreso'
-            checkInButton.disabled = true; // Cannot check-in again if last was ingreso
-            this.showMessage('Tu último registro fue un ingreso. Puedes marcar egreso.', 'info');
-        } else if (this.lastAttendance === 'OUT') { // Note: Backend returns 'IN'/'OUT', frontend uses 'ingreso'/'egreso'
-            checkOutButton.disabled = true; // Cannot check-out again if last was egreso
-            this.showMessage('Tu último registro fue un egreso. Puedes marcar ingreso.', 'info');
-        } else if (this.lastAttendance === null) {
-            checkOutButton.disabled = true; // Cannot check-out if never checked in
-            this.showMessage('Es tu primer registro del día. Por favor, marca tu ingreso.', 'info');
+            if (this.lastAttendance === 'IN') { // Note: Backend returns 'IN'/'OUT', frontend uses 'ingreso'/'egreso'
+                checkInButton.disabled = true; // Cannot check-in again if last was ingreso
+                this.showMessage('Tu último registro fue un ingreso. Puedes marcar egreso.', 'info');
+            } else if (this.lastAttendance === 'OUT') { // Note: Backend returns 'IN'/'OUT', frontend uses 'ingreso'/'egreso'
+                checkOutButton.disabled = true; // Cannot check-out again if last was egreso
+                this.showMessage('Tu último registro fue un egreso. Puedes marcar ingreso.', 'info');
+            } else if (this.lastAttendance === null) {
+                checkOutButton.disabled = true; // Cannot check-out if never checked in
+                this.showMessage('Es tu primer registro del día. Por favor, marca tu ingreso.', 'info');
+            }
         }
     }
 
     disableButtons() {
-        this.shadowRoot.getElementById('checkInButton').disabled = true;
-        this.shadowRoot.getElementById('checkOutButton').disabled = true;
+        const checkInButton = this.shadowRoot.getElementById('checkInButton');
+        const checkOutButton = this.shadowRoot.getElementById('checkOutButton');
+        if (checkInButton) checkInButton.disabled = true;
+        if (checkOutButton) checkOutButton.disabled = true;
     }
 
     async markAttendance(type) {
@@ -197,14 +220,21 @@ class AttendanceMarkerComponent extends HTMLElement {
             const data = await response.json();
 
             if (response.ok) {
-                // Ocultar botones e instrucciones para no generar confusión
-                const buttonsContainer = this.shadowRoot.getElementById('buttonsContainer');
-                const instructionText = this.shadowRoot.getElementById('instructionText');
-                if (buttonsContainer) buttonsContainer.style.display = 'none';
-                if (instructionText) instructionText.style.display = 'none';
+                if (this.messageTimeout) {
+                    clearTimeout(this.messageTimeout);
+                    this.messageTimeout = null;
+                }
 
-                const successText = `${data.message || 'Asistencia registrada correctamente.'} Ya puedes cerrar esta ventana.`;
-                this.showMessage(successText, 'success');
+                const mainContainer = this.shadowRoot.getElementById('mainContainer');
+                const successMsg = data.message || 'Asistencia registrada correctamente.';
+                
+                mainContainer.innerHTML = `
+                    <div class="success-screen">
+                        <h2>Marcar Asistencia</h2>
+                        <h3>¡Registro Exitoso!</h3>
+                        <p>${successMsg}<br><br><strong>Ya puedes cerrar esta ventana.</strong></p>
+                    </div>
+                `;
 
                 this.lastAttendance = (type === 'ingreso' ? 'IN' : 'OUT'); 
             } else {
@@ -219,15 +249,24 @@ class AttendanceMarkerComponent extends HTMLElement {
     }
 
     showMessage(message, type = 'info') {
+        if (this.messageTimeout) {
+            clearTimeout(this.messageTimeout);
+            this.messageTimeout = null;
+        }
+
         const messageArea = this.shadowRoot.getElementById('messageArea');
+        if (!messageArea) return;
+
         messageArea.textContent = message;
         messageArea.className = `message ${type}`;
         messageArea.style.display = 'block';
 
         // Do not auto-hide error or success messages
         if (type !== 'error' && type !== 'success') {
-            setTimeout(() => {
-                messageArea.style.display = 'none';
+            this.messageTimeout = setTimeout(() => {
+                if (messageArea) {
+                    messageArea.style.display = 'none';
+                }
             }, 5000);
         }
     }
