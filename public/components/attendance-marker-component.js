@@ -176,7 +176,7 @@ class AttendanceMarkerComponent extends HTMLElement {
     }
 
     async markAttendance(type) {
-      //  this.showMessage(`Registrando ${type}...`, 'info');
+        this.showMessage(`Registrando ${type}...`, 'info');
         this.disableButtons(); // Disable buttons to prevent double-submitting
 
         try {
