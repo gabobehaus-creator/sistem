@@ -55,6 +55,34 @@ class AttendanceReportsView extends HTMLElement {
         }
     }
 
+    async deleteRecord(recordId) {
+        if (!confirm('¿Está seguro de que desea eliminar este registro de asistencia?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/asistencia/${recordId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                alert('No tiene permisos para eliminar este registro.');
+                return;
+            }
+
+            if (response.ok) {
+                alert('Registro eliminado correctamente.');
+                this.fetchAttendanceReport();
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                alert(`Error al eliminar el registro: ${errorData.message || response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error al eliminar registro:', error);
+            alert('Ocurrió un error al intentar eliminar el registro.');
+        }
+    }
+
     populateUserSelect() {
         const select = this.shadowRoot.getElementById('userSelect');
         select.innerHTML = '<option value="">Todos los Usuarios</option>';
@@ -71,7 +99,7 @@ class AttendanceReportsView extends HTMLElement {
         tbody.innerHTML = '';
 
         if (this.records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se encontraron registros.</td></tr>';
             this.renderPaginationControls(0);
             return;
         }
@@ -107,7 +135,14 @@ class AttendanceReportsView extends HTMLElement {
                 <td>${formattedDate} ${formattedTime}</td>
                 <td>${actionBadge}</td>
                 <td>${record.device || 'MOBILE'}</td>
+                <td>
+                    <button class="btn-delete" data-id="${record.id}">Eliminar</button>
+                </td>
             `;
+
+            const deleteBtn = tr.querySelector('.btn-delete');
+            deleteBtn.addEventListener('click', () => this.deleteRecord(record.id));
+
             tbody.appendChild(tr);
         });
 
@@ -225,6 +260,14 @@ class AttendanceReportsView extends HTMLElement {
                 button.print:hover {
                     background-color: #138496;
                 }
+                button.btn-delete {
+                    background-color: #dc3545;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                }
+                button.btn-delete:hover {
+                    background-color: #bd2130;
+                }
                 table {
                     width: 100%;
                     border-collapse: collapse;
@@ -300,10 +343,11 @@ class AttendanceReportsView extends HTMLElement {
                         <th>Fecha y Hora</th>
                         <th>Acción</th>
                         <th>Dispositivo</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="recordsBody">
-                    <tr><td colspan="4" style="text-align:center;">Cargando registros...</td></tr>
+                    <tr><td colspan="5" style="text-align:center;">Cargando registros...</td></tr>
                 </tbody>
             </table>
 
