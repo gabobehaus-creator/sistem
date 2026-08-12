@@ -81,8 +81,8 @@ class AttendanceMarkerComponent extends HTMLElement {
             <div>
                 <h2>Marcar Asistencia</h2>
                 <div id="welcomeUser" class="welcome-message"></div>
-                <p>Por favor, selecciona si deseas registrar tu ingreso o egreso.</p>
-                <div class="buttons-container">
+                <p id="instructionText">Por favor, selecciona si deseas registrar tu ingreso o egreso.</p>
+                <div id="buttonsContainer" class="buttons-container">
                     <button id="checkInButton" disabled>Marcar Ingreso</button>
                     <button id="checkOutButton" disabled>Marcar Egreso</button>
                 </div>
@@ -197,17 +197,16 @@ class AttendanceMarkerComponent extends HTMLElement {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(`${data.message || 'Asistencia registrada correctamente.'} Cerrando en breve...`, 'success');
+                // Ocultar botones e instrucciones para no generar confusión
+                const buttonsContainer = this.shadowRoot.getElementById('buttonsContainer');
+                const instructionText = this.shadowRoot.getElementById('instructionText');
+                if (buttonsContainer) buttonsContainer.style.display = 'none';
+                if (instructionText) instructionText.style.display = 'none';
+
+                const successText = `${data.message || 'Asistencia registrada correctamente.'} Ya puedes cerrar esta ventana.`;
+                this.showMessage(successText, 'success');
                 // Update lastAttendance based on the type that was just marked
                 this.lastAttendance = (type === 'ingreso' ? 'IN' : 'OUT'); 
-
-                setTimeout(() => {
-                    window.close();
-                    // Fallback en caso de que el navegador bloquee window.close()
-                    setTimeout(() => {
-                        this.showMessage('Ya puedes cerrar esta ventana.', 'success');
-                    }, 500);
-                }, 3000);
             } else {
                 this.showMessage(data.message || 'Error al registrar asistencia.', 'error');
                 this.updateUI(); // Re-enable buttons if there was an error
