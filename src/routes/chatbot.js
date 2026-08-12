@@ -47,7 +47,7 @@ Instrucciones:
 - Si te piden calcular algo, hazlo basándote en los datos provistos.`;
 
         // Call Gemini API using fetch with gemini-pro model
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
