@@ -204,8 +204,11 @@ class AttendanceMarkerComponent extends HTMLElement {
                 if (instructionText) instructionText.style.display = 'none';
 
                 const successText = `${data.message || 'Asistencia registrada correctamente.'} Ya puedes cerrar esta ventana.`;
-               // this.showMessage(successText, 'success');
-                // Update lastAttendance based on the type that was just marked
+                const messageArea = this.shadowRoot.getElementById('messageArea');
+                messageArea.textContent = successText;
+                messageArea.className = `successText success`;
+                messageArea.style.display = 'block';
+
                 this.lastAttendance = (type === 'ingreso' ? 'IN' : 'OUT'); 
             } else {
                 this.showMessage(data.message || 'Error al registrar asistencia.', 'error');
