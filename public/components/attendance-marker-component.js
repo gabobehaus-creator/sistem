@@ -223,7 +223,8 @@ class AttendanceMarkerComponent extends HTMLElement {
         messageArea.textContent = message;
         messageArea.className = `message ${type}`;
         messageArea.style.display = 'block';
-        // Hide message after a few seconds unless it's an error or success closing sequence
+
+        // Do not auto-hide error or success messages
         if (type !== 'error' && type !== 'success') {
             setTimeout(() => {
                 messageArea.style.display = 'none';
