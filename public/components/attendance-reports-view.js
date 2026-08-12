@@ -6,6 +6,10 @@ class AttendanceReportsView extends HTMLElement {
         this.users = [];
         this.activeTab = 'dashboard'; // 'dashboard', 'jornadas', 'historial'
         
+        // Search filters
+        this.searchTermJornadas = '';
+        this.searchTermHistorial = '';
+
         // Pagination for Historial
         this.currentPageHistorial = 1;
         this.itemsPerPageHistorial = 15;
@@ -27,6 +31,8 @@ class AttendanceReportsView extends HTMLElement {
             if (response.ok) {
                 this.users = await response.json();
                 this.populateUserSelect();
+                // Re-render once users are loaded to resolve any pending IDs to names
+                this.updateDashboardAndTables();
             }
         } catch (error) {
             console.error("Error al cargar lista de usuarios:", error);
@@ -103,9 +109,16 @@ class AttendanceReportsView extends HTMLElement {
         });
     }
 
+    // Helper to resolve user details reliably
+    resolveUser(userId, recordUserRelation) {
+        const found = this.users.find(u => u.id == userId);
+        if (found) return found;
+        if (recordUserRelation) return recordUserRelation;
+        return { username: `Usuario #${userId}`, role: '-' };
+    }
+
     // Process raw records to calculate shifts (Jornadas)
     calculateShifts() {
-        // Sort records chronologically per user
         const userRecords = {};
         this.records.forEach(record => {
             const uid = record.user_id;
@@ -116,21 +129,21 @@ class AttendanceReportsView extends HTMLElement {
         const shifts = [];
 
         Object.keys(userRecords).forEach(uid => {
-            // Sort ascending
             const sorted = userRecords[uid].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             
             let i = 0;
             while (i < sorted.length) {
                 const current = sorted[i];
+                const userObj = this.resolveUser(uid, current.User);
+
                 if (current.action_type === 'IN') {
                     const next = sorted[i + 1];
                     if (next && next.action_type === 'OUT') {
-                        // Completed shift
                         const durationMs = new Date(next.timestamp) - new Date(current.timestamp);
                         const hours = durationMs / (1000 * 60 * 60);
                         shifts.push({
                             user_id: uid,
-                            user: current.User || { username: `Usuario #${uid}`, role: '-' },
+                            user: userObj,
                             date: new Date(current.timestamp).toLocaleDateString('es-AR'),
                             inTime: new Date(current.timestamp),
                             outTime: new Date(next.timestamp),
@@ -138,12 +151,11 @@ class AttendanceReportsView extends HTMLElement {
                             status: 'completed',
                             device: current.device || 'MOBILE'
                         });
-                        i += 2; // Skip both
+                        i += 2;
                     } else {
-                        // Incomplete shift (No matching OUT yet)
                         shifts.push({
                             user_id: uid,
-                            user: current.User || { username: `Usuario #${uid}`, role: '-' },
+                            user: userObj,
                             date: new Date(current.timestamp).toLocaleDateString('es-AR'),
                             inTime: new Date(current.timestamp),
                             outTime: null,
@@ -154,10 +166,9 @@ class AttendanceReportsView extends HTMLElement {
                         i += 1;
                     }
                 } else {
-                    // Orphan OUT (OUT without a preceding IN)
                     shifts.push({
                         user_id: uid,
-                        user: current.User || { username: `Usuario #${uid}`, role: '-' },
+                        user: userObj,
                         date: new Date(current.timestamp).toLocaleDateString('es-AR'),
                         inTime: null,
                         outTime: new Date(current.timestamp),
@@ -170,7 +181,6 @@ class AttendanceReportsView extends HTMLElement {
             }
         });
 
-        // Sort shifts descending by date/time
         return shifts.sort((a, b) => {
             const timeA = a.inTime || a.outTime;
             const timeB = b.inTime || b.outTime;
@@ -182,15 +192,15 @@ class AttendanceReportsView extends HTMLElement {
         const shifts = this.calculateShifts();
         
         // 1. Calculate Metrics
-        // Active Users (Last action is IN and has no OUT yet)
         const activeUsersMap = {};
-        // Sort chronologically to find the absolute last state of each user
         const chronoRecords = [...this.records].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
         chronoRecords.forEach(r => {
+            const userObj = this.resolveUser(r.user_id, r.User);
             activeUsersMap[r.user_id] = {
                 action: r.action_type,
-                username: r.User ? r.User.username : `Usuario #${r.user_id}`,
-                role: r.User ? r.User.role : '-',
+                username: userObj.username,
+                role: userObj.role,
                 time: new Date(r.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
             };
         });
@@ -226,7 +236,11 @@ class AttendanceReportsView extends HTMLElement {
         const activeListContainer = this.shadowRoot.getElementById('activeStaffList');
         activeListContainer.innerHTML = '';
         if (activeStaff.length === 0) {
-            activeListContainer.innerHTML = `<div class="empty-state">No hay personal activo en este momento.</div>`;
+            activeListContainer.innerHTML = `
+                <div class="empty-state">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; color: #94a3b8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <div>No hay personal activo en este momento.</div>
+                </div>`;
         } else {
             activeStaff.forEach(member => {
                 const div = document.createElement('div');
@@ -237,7 +251,10 @@ class AttendanceReportsView extends HTMLElement {
                         <span class="name">${member.username}</span>
                         <span class="role">${member.role}</span>
                     </div>
-                    <span class="badge-active">Activo desde ${member.time}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="pulse-dot"></span>
+                        <span class="badge-active">Activo desde ${member.time}</span>
+                    </div>
                 `;
                 activeListContainer.appendChild(div);
             });
@@ -257,13 +274,16 @@ class AttendanceReportsView extends HTMLElement {
 
         const roles = Object.keys(hoursByRole);
         if (roles.length === 0) {
-            chartContainer.innerHTML = `<div class="empty-state">No hay datos de horas para graficar.</div>`;
+            chartContainer.innerHTML = `
+                <div class="empty-state">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; color: #94a3b8;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    <div>No hay datos de horas para graficar.</div>
+                </div>`;
             return;
         }
 
         const maxHours = Math.max(...Object.values(hoursByRole), 1);
 
-        // Build a beautiful HTML/CSS bar chart
         const chartWrapper = document.createElement('div');
         chartWrapper.className = 'chart-wrapper';
 
@@ -273,7 +293,7 @@ class AttendanceReportsView extends HTMLElement {
             const barRow = document.createElement('div');
             barRow.className = 'chart-bar-row';
             barRow.innerHTML = `
-                <div class="chart-label">${role}</div>
+                <div class="chart-label" title="${role}">${role}</div>
                 <div class="chart-bar-container">
                     <div class="chart-bar" style="width: ${percentage}%"></div>
                 </div>
@@ -289,23 +309,28 @@ class AttendanceReportsView extends HTMLElement {
         const tbody = this.shadowRoot.getElementById('jornadasBody');
         tbody.innerHTML = '';
 
-        if (shifts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se encontraron jornadas calculadas.</td></tr>';
+        // Filter shifts by search term
+        const filteredShifts = shifts.filter(s => {
+            const term = this.searchTermJornadas.toLowerCase();
+            return s.user.username.toLowerCase().includes(term) || (s.user.role && s.user.role.toLowerCase().includes(term));
+        });
+
+        if (filteredShifts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 32px; color: #64748b;">No se encontraron jornadas calculadas.</td></tr>';
             this.renderJornadasPagination(0);
             return;
         }
 
-        const totalPages = Math.ceil(shifts.length / this.itemsPerPageJornadas);
+        const totalPages = Math.ceil(filteredShifts.length / this.itemsPerPageJornadas);
         if (this.currentPageJornadas > totalPages) this.currentPageJornadas = totalPages;
         if (this.currentPageJornadas < 1) this.currentPageJornadas = 1;
 
         const start = (this.currentPageJornadas - 1) * this.itemsPerPageJornadas;
         const end = start + this.itemsPerPageJornadas;
-        const pageShifts = shifts.slice(start, end);
+        const pageShifts = filteredShifts.slice(start, end);
 
         pageShifts.forEach(shift => {
             const tr = document.createElement('tr');
-            
             const formatTime = (date) => date ? date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
             
             let statusBadge = '';
@@ -341,19 +366,26 @@ class AttendanceReportsView extends HTMLElement {
         const tbody = this.shadowRoot.getElementById('recordsBody');
         tbody.innerHTML = '';
 
-        if (this.records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se encontraron registros.</td></tr>';
+        // Filter records by search term
+        const filteredRecords = this.records.filter(r => {
+            const userObj = this.resolveUser(r.user_id, r.User);
+            const term = this.searchTermHistorial.toLowerCase();
+            return userObj.username.toLowerCase().includes(term) || (userObj.role && userObj.role.toLowerCase().includes(term));
+        });
+
+        if (filteredRecords.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 32px; color: #64748b;">No se encontraron registros.</td></tr>';
             this.renderHistorialPagination(0);
             return;
         }
 
-        const totalPages = Math.ceil(this.records.length / this.itemsPerPageHistorial);
+        const totalPages = Math.ceil(filteredRecords.length / this.itemsPerPageHistorial);
         if (this.currentPageHistorial > totalPages) this.currentPageHistorial = totalPages;
         if (this.currentPageHistorial < 1) this.currentPageHistorial = 1;
 
         const start = (this.currentPageHistorial - 1) * this.itemsPerPageHistorial;
         const end = start + this.itemsPerPageHistorial;
-        const pageRecords = this.records.slice(start, end);
+        const pageRecords = filteredRecords.slice(start, end);
 
         pageRecords.forEach(record => {
             const tr = document.createElement('tr');
@@ -366,11 +398,10 @@ class AttendanceReportsView extends HTMLElement {
                 ? `<span class="badge in">Entrada (IN)</span>`
                 : `<span class="badge out">Salida (OUT)</span>`;
 
-            const username = record.User ? record.User.username : `Usuario #${record.user_id}`;
-            const role = record.User ? record.User.role : '-';
+            const userObj = this.resolveUser(record.user_id, record.User);
 
             tr.innerHTML = `
-                <td><strong>${username}</strong> <span style="color: #666; font-size: 0.9em;">(${role})</span></td>
+                <td><strong>${userObj.username}</strong> <span style="color: #64748b; font-size: 0.9em;">(${userObj.role})</span></td>
                 <td>${formattedDate} ${formattedTime}</td>
                 <td>${actionBadge}</td>
                 <td>${record.device || 'MOBILE'}</td>
@@ -425,7 +456,6 @@ class AttendanceReportsView extends HTMLElement {
     switchTab(tabName) {
         this.activeTab = tabName;
         
-        // Update tab buttons
         this.shadowRoot.querySelectorAll('.tab-btn').forEach(btn => {
             if (btn.dataset.tab === tabName) {
                 btn.classList.add('active');
@@ -434,7 +464,6 @@ class AttendanceReportsView extends HTMLElement {
             }
         });
 
-        // Update tab contents
         this.shadowRoot.querySelectorAll('.tab-content').forEach(content => {
             if (content.id === `${tabName}TabContent`) {
                 content.classList.add('active');
@@ -452,10 +481,9 @@ class AttendanceReportsView extends HTMLElement {
 
         let csv = "Usuario,Rol,Fecha y Hora,Accion,Dispositivo\n";
         this.records.forEach(r => {
-            const username = r.User ? r.User.username : r.user_id;
-            const role = r.User ? r.User.role : '';
+            const userObj = this.resolveUser(r.user_id, r.User);
             const dateStr = new Date(r.timestamp).toLocaleString('es-AR');
-            csv += `"${username}","${role}","${dateStr}","${r.action_type}","${r.device || 'MOBILE'}"\n`;
+            csv += `"${userObj.username}","${userObj.role}","${dateStr}","${r.action_type}","${r.device || 'MOBILE'}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -493,7 +521,7 @@ class AttendanceReportsView extends HTMLElement {
                     display: block;
                     padding: 24px;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    color: #2c3e50;
+                    color: #1e293b;
                     background-color: #f8fafc;
                 }
 
@@ -511,6 +539,7 @@ class AttendanceReportsView extends HTMLElement {
                     font-size: 24px;
                     color: #0f172a;
                     font-weight: 700;
+                    letter-spacing: -0.5px;
                 }
                 .header-actions {
                     display: flex;
@@ -560,6 +589,10 @@ class AttendanceReportsView extends HTMLElement {
                     border: none;
                     cursor: pointer;
                     font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
                 }
                 button:hover {
                     background-color: #2563eb;
@@ -580,6 +613,21 @@ class AttendanceReportsView extends HTMLElement {
                 }
                 button.print:hover {
                     background-color: #475569;
+                }
+
+                /* Search Bar inside Tabs */
+                .search-container {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin-bottom: 16px;
+                }
+                .search-input {
+                    width: 100%;
+                    max-width: 300px;
+                    padding: 8px 12px;
+                    font-size: 13px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
                 }
 
                 /* Tabs Navigation */
@@ -626,12 +674,29 @@ class AttendanceReportsView extends HTMLElement {
                 }
                 .metric-card {
                     background: white;
-                    padding: 20px;
+                    padding: 24px;
                     border-radius: 12px;
                     border: 1px solid #e2e8f0;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.02);
                     display: flex;
                     flex-direction: column;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .metric-card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 4px;
+                    height: 100%;
+                    background: #3b82f6;
+                }
+                .metric-card.active-presence::before {
+                    background: #10b981;
+                }
+                .metric-card.hours-registered::before {
+                    background: #8b5cf6;
                 }
                 .metric-card .title {
                     font-size: 13px;
@@ -642,7 +707,7 @@ class AttendanceReportsView extends HTMLElement {
                     margin-bottom: 8px;
                 }
                 .metric-card .value {
-                    font-size: 28px;
+                    font-size: 32px;
                     font-weight: 700;
                     color: #0f172a;
                 }
@@ -662,17 +727,20 @@ class AttendanceReportsView extends HTMLElement {
                     background: white;
                     border-radius: 12px;
                     border: 1px solid #e2e8f0;
-                    padding: 20px;
+                    padding: 24px;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.02);
                 }
                 .panel-card h3 {
                     margin-top: 0;
-                    margin-bottom: 16px;
+                    margin-bottom: 20px;
                     font-size: 16px;
                     font-weight: 700;
                     color: #0f172a;
                     border-bottom: 1px solid #f1f5f9;
                     padding-bottom: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
                 }
 
                 /* Active Staff List */
@@ -687,17 +755,22 @@ class AttendanceReportsView extends HTMLElement {
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 12px;
+                    padding: 12px 16px;
                     background: #f8fafc;
                     border-radius: 8px;
                     border: 1px solid #f1f5f9;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+                .active-member-card:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                 }
                 .active-member-card .avatar {
                     width: 36px;
                     height: 36px;
                     border-radius: 50%;
-                    background: #dbeafe;
-                    color: #1e40af;
+                    background: #e2e8f0;
+                    color: #334155;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -727,11 +800,36 @@ class AttendanceReportsView extends HTMLElement {
                     border-radius: 6px;
                 }
 
+                /* Pulsing Dot */
+                .pulse-dot {
+                    width: 8px;
+                    height: 8px;
+                    background-color: #10b981;
+                    border-radius: 50%;
+                    display: inline-block;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                    animation: pulse 1.6s infinite;
+                }
+                @keyframes pulse {
+                    0% {
+                        transform: scale(0.95);
+                        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                    }
+                    70% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+                    }
+                    100% {
+                        transform: scale(0.95);
+                        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                    }
+                }
+
                 /* Custom HTML/CSS Chart */
                 .chart-wrapper {
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
+                    gap: 16px;
                 }
                 .chart-bar-row {
                     display: flex;
@@ -739,7 +837,7 @@ class AttendanceReportsView extends HTMLElement {
                     gap: 12px;
                 }
                 .chart-label {
-                    width: 100px;
+                    width: 110px;
                     font-size: 13px;
                     font-weight: 600;
                     color: #475569;
@@ -749,19 +847,19 @@ class AttendanceReportsView extends HTMLElement {
                 }
                 .chart-bar-container {
                     flex-grow: 1;
-                    height: 12px;
+                    height: 14px;
                     background: #f1f5f9;
-                    border-radius: 6px;
+                    border-radius: 8px;
                     overflow: hidden;
                 }
                 .chart-bar {
                     height: 100%;
-                    background: #3b82f6;
-                    border-radius: 6px;
-                    transition: width 0.5s ease;
+                    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+                    border-radius: 8px;
+                    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .chart-value {
-                    width: 60px;
+                    width: 70px;
                     text-align: right;
                     font-size: 13px;
                     font-weight: 700;
@@ -879,9 +977,13 @@ class AttendanceReportsView extends HTMLElement {
 
                 .empty-state {
                     text-align: center;
-                    padding: 24px;
+                    padding: 32px 16px;
                     color: #64748b;
                     font-size: 14px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
                 }
 
                 .print-header {
@@ -907,15 +1009,12 @@ class AttendanceReportsView extends HTMLElement {
                         background: white !important;
                         color: #000 !important;
                     }
-                    /* Hide interactive elements, tabs, and actions */
-                    .filters, button, .header, .pagination, .no-print, .tabs-nav, .dashboard-grid, .dashboard-split {
+                    .filters, button, .header, .pagination, .no-print, .tabs-nav, .dashboard-grid, .dashboard-split, .search-container {
                         display: none !important;
                     }
-                    /* Force the active tab content to be visible */
                     .tab-content {
                         display: block !important;
                     }
-                    /* Show elegant print header */
                     .print-header {
                         display: block !important;
                         margin-bottom: 25px;
@@ -933,7 +1032,6 @@ class AttendanceReportsView extends HTMLElement {
                         font-size: 11px;
                         color: #555;
                     }
-                    /* Table styling optimized for print */
                     table {
                         width: 100% !important;
                         border-collapse: collapse !important;
@@ -952,7 +1050,6 @@ class AttendanceReportsView extends HTMLElement {
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
-                    /* Clean, ink-friendly badges for print */
                     .badge, .badge-shift {
                         background: transparent !important;
                         padding: 2px 6px !important;
@@ -989,8 +1086,14 @@ class AttendanceReportsView extends HTMLElement {
             <div class="header">
                 <h2>Reporte de Asistencias y Fichajes</h2>
                 <div class="header-actions">
-                    <button class="export" id="btnExport">Exportar a CSV/Excel</button>
-                    <button class="print" id="btnPrint">Imprimir / PDF</button>
+                    <button class="export" id="btnExport">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Exportar CSV
+                    </button>
+                    <button class="print" id="btnPrint">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Imprimir / PDF
+                    </button>
                 </div>
             </div>
 
@@ -1009,7 +1112,10 @@ class AttendanceReportsView extends HTMLElement {
                         <option value="">Todos los Usuarios</option>
                     </select>
                 </div>
-                <button id="btnFilter">Filtrar</button>
+                <button id="btnFilter">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    Filtrar
+                </button>
             </div>
 
             <!-- Tabs Navigation -->
@@ -1022,7 +1128,7 @@ class AttendanceReportsView extends HTMLElement {
             <!-- TAB 1: DASHBOARD -->
             <div id="dashboardTabContent" class="tab-content active">
                 <div class="dashboard-grid">
-                    <div class="metric-card">
+                    <div class="metric-card active-presence">
                         <span class="title">Presencia Actual</span>
                         <span class="value" id="metricActiveCount">0</span>
                     </div>
@@ -1030,7 +1136,7 @@ class AttendanceReportsView extends HTMLElement {
                         <span class="title">Tasa de Asistencia (Hoy)</span>
                         <span class="value" id="metricAttendanceRate">0%</span>
                     </div>
-                    <div class="metric-card">
+                    <div class="metric-card hours-registered">
                         <span class="title">Total Horas Registradas</span>
                         <span class="value" id="metricTotalHours">0.0 hrs</span>
                     </div>
@@ -1038,13 +1144,19 @@ class AttendanceReportsView extends HTMLElement {
 
                 <div class="dashboard-split">
                     <div class="panel-card">
-                        <h3>Personal Activo en el Hotel</h3>
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #10b981;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            Personal Activo en el Hotel
+                        </h3>
                         <div class="active-staff-list" id="activeStaffList">
                             <div class="empty-state">Cargando personal activo...</div>
                         </div>
                     </div>
                     <div class="panel-card">
-                        <h3>Horas Acumuladas por Rol</h3>
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #3b82f6;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                            Horas Acumuladas por Rol
+                        </h3>
                         <div id="hoursChartContainer">
                             <div class="empty-state">Cargando gráfico...</div>
                         </div>
@@ -1054,6 +1166,9 @@ class AttendanceReportsView extends HTMLElement {
 
             <!-- TAB 2: JORNADAS CALCULADAS -->
             <div id="jornadasTabContent" class="tab-content">
+                <div class="search-container">
+                    <input type="text" id="searchJornadas" class="search-input" placeholder="Buscar por empleado o rol...">
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -1078,6 +1193,9 @@ class AttendanceReportsView extends HTMLElement {
 
             <!-- TAB 3: HISTORIAL DE FICHAJES -->
             <div id="historialTabContent" class="tab-content">
+                <div class="search-container">
+                    <input type="text" id="searchHistorial" class="search-input" placeholder="Buscar por empleado o rol...">
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -1105,6 +1223,18 @@ class AttendanceReportsView extends HTMLElement {
         this.shadowRoot.getElementById('btnFilter').addEventListener('click', () => this.fetchAttendanceReport());
         this.shadowRoot.getElementById('btnExport').addEventListener('click', () => this.exportCSV());
         this.shadowRoot.getElementById('btnPrint').addEventListener('click', () => this.printPDF());
+
+        // Search inputs
+        this.shadowRoot.getElementById('searchJornadas').addEventListener('input', (e) => {
+            this.searchTermJornadas = e.target.value;
+            this.currentPageJornadas = 1;
+            this.updateDashboardAndTables();
+        });
+        this.shadowRoot.getElementById('searchHistorial').addEventListener('input', (e) => {
+            this.searchTermHistorial = e.target.value;
+            this.currentPageHistorial = 1;
+            this.renderHistorialTable();
+        });
 
         // Tab switching
         this.shadowRoot.querySelectorAll('.tab-btn').forEach(btn => {
