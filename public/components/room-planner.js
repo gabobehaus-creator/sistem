@@ -24,7 +24,7 @@ class RoomPlanner extends HTMLElement {
                 position: relative; 
                 border: 1px solid #dcdcdc;
             }
-            /* Scrollbar personalizada para una sensación fluida de Excel */
+            /* Scrollbar personalizada para sensación fluida de Excel */
             .planner-container::-webkit-scrollbar {
                 height: 10px;
                 width: 10px;
@@ -431,4 +431,105 @@ class RoomPlanner extends HTMLElement {
                         const cellSelector = `[data-room-id="${roomId}"][data-day="${i}"][data-time-slot="${timeSlot}"]`;
                         const cell = grid.querySelector(cellSelector);
 
-                        if (cell && !renderedBookings.has(booking.id)) { // Render
+                        if (cell && !renderedBookings.has(booking.id)) { // Render only once per booking
+                            const spanInSlots = this.getBookingSpanInSlots(booking, i, timeSlot);
+                            if (spanInSlots > 0) {
+                                cell.classList.remove('status-liberated');
+                                cell.classList.add(`status-${booking.status}`);
+                                // Check if the current day is a weekend for removing weekend-cell class from occupied cells
+                                const currentDateForCheck = new Date(this.currentYear, this.currentMonthIndex, i);
+                                if((currentDateForCheck.getDay() === 0 || currentDateForCheck.getDay() === 6) && booking.status !== 'liberated') { 
+                                    cell.classList.remove('weekend-cell'); 
+                                }
+                                cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.time_slot.charAt(0).toUpperCase()})`;
+                                cell.dataset.bookingId = booking.id;
+                                cell.style.gridColumn = `span ${spanInSlots}`;
+                                cell.classList.add('booking-merged');
+                                renderedBookings.add(booking.id); // Mark as rendered
+
+                                // Remove covered cells from the DOM so grid columns stay perfectly aligned
+                                let removeDay = i;
+                                let removeSlot = timeSlot;
+                                for (let s = 1; s < spanInSlots; s++) {
+                                    if (removeSlot === 'morning') {
+                                        removeSlot = 'afternoon';
+                                    } else {
+                                        removeSlot = 'morning';
+                                        removeDay++;
+                                    }
+                                    const cellToRemove = grid.querySelector(`[data-room-id="${roomId}"][data-day="${removeDay}"][data-time-slot="${removeSlot}"]`);
+                                    if (cellToRemove) {
+                                        cellToRemove.remove();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Maneja todos los clics del grid a través de delegación
+    handleGridClick(event) {
+        let cell = event.target;
+        while (cell !== this.shadowRoot.getElementById('plannerGrid') && !cell.classList.contains('cell')) {
+            cell = cell.parentNode;
+        }
+
+        if (cell.classList.contains('cell') && !cell.classList.contains('header-cell')) {
+            this.handleCellClickLogic(cell);
+        }
+    }
+   
+    // Lógica de click separada que EMITE UN EVENTO
+    handleCellClickLogic(cell) {
+        const day = cell.dataset.day;
+        const timeSlot = cell.dataset.timeSlot; // Get the time slot from the clicked cell
+        const clickedDate = new Date(Date.UTC(this.currentYear, this.currentMonthIndex, day));
+        const formattedDate = clickedDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        const roomId = parseInt(cell.dataset.roomId);
+        const roomDetails = this.rooms.find(r => r.id === roomId);
+
+        // Find existing booking that starts *at or before* this specific slot, and covers it.
+        const existingBooking = this.findBookingForSlot(roomId, formattedDate, timeSlot);
+
+        const eventDetail = {
+            roomId: roomId,
+            roomName: roomDetails ? roomDetails.name : `Habitación ${roomId}`,
+            roomPrice: roomDetails ? roomDetails.price : 0,
+            
+            // Usamos los datos de la reserva existente o valores por defecto para NUEVA RESERVA
+            startDate: existingBooking ? existingBooking.start_date : formattedDate,
+            timeSlot: existingBooking ? existingBooking.time_slot : timeSlot, 
+            endDate: existingBooking ? existingBooking.end_date : '', 
+            clientName: existingBooking ? existingBooking.client_name : '',
+            status: existingBooking ? existingBooking.status : 'reserved', // Nueva reserva por defecto es 'reserved'
+            pricePerNight: existingBooking ? existingBooking.price_per_night : roomDetails.price,
+
+            bookingId: existingBooking ? existingBooking.id : null, // null para nueva reserva
+            notes: existingBooking ? existingBooking.notes : '', // Notas de la reserva existente o vacío
+            clientEmail: existingBooking ? existingBooking.email : '', // Pass email if exists
+            clientId: existingBooking ? existingBooking.client_id : null // Pass client ID for company dropdown
+        };
+
+        document.dispatchEvent(new CustomEvent('open-booking-modal', {
+            detail: eventDetail
+        }));
+    }
+
+    handleRoomHeaderClick(event) {
+        const cell = event.target;
+        if (cell.classList.contains('room-header') && cell.dataset.roomId) { // Ensure it's a room header and has an ID
+            const roomId = parseInt(cell.dataset.roomId);
+            const roomDetails = this.rooms.find(r => r.id === roomId);
+            
+            if (roomDetails) {
+                document.dispatchEvent(new CustomEvent('open-room-details-modal', {
+                    detail: roomDetails
+                }));
+            }
+        }
+    }
+} 
+customElements.define('room-planner', RoomPlanner);
