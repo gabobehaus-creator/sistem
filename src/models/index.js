@@ -65,7 +65,7 @@ const User = sequelize.define('User', {
         allowNull: false,
         defaultValue: 'operador', // Rol por defecto
         validate: {
-            isIn: [['admin', 'supervisor', 'operador']] // Roles permitidos
+            isIn: [['admin', 'supervisor', 'operador', 'limpieza']] // Roles permitidos
         }
     },
     is_active: { // Para el "Baja" lógica del ABM (borrado suave)
