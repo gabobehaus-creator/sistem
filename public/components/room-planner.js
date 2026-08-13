@@ -10,36 +10,109 @@ class RoomPlanner extends HTMLElement {
 
         shadow.innerHTML = `
             <style>
-            .planner-container { overflow-x: auto; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; position: relative; }
-            .planner-grid { display: grid; border-collapse: collapse; width: max-content; }
-            /* Celdas ahora más pequeñas para morning/afternoon */
-            .cell { border: 1px solid #e0e0e0; padding: 4px 2px; text-align: center; cursor: pointer; min-height: 20px; box-sizing: border-box; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8em;}
-            .cell:hover { background-color: #f2f2f2; }
-            .header-cell { background-color: #0056b3; color: white; font-weight: bold; position: sticky; top: 0; z-index: 10; }
+            :host {
+                display: block;
+                width: 100%;
+            }
+            .planner-container { 
+                overflow-x: auto; 
+                overflow-y: auto;
+                max-width: 100%;
+                background: white; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+                border-radius: 6px; 
+                position: relative; 
+                border: 1px solid #dcdcdc;
+            }
+            /* Scrollbar personalizada para una sensación fluida de Excel */
+            .planner-container::-webkit-scrollbar {
+                height: 10px;
+                width: 10px;
+            }
+            .planner-container::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+            .planner-container::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 5px;
+            }
+            .planner-container::-webkit-scrollbar-thumb:hover {
+                background: #a8a8a8;
+            }
+
+            .planner-grid { 
+                display: grid; 
+                border-collapse: collapse; 
+                width: max-content; 
+                background-color: #fff;
+            }
+            
+            /* Celdas del calendario */
+            .cell { 
+                border: 1px solid #e2e8f0; 
+                padding: 4px 2px; 
+                text-align: center; 
+                cursor: pointer; 
+                min-height: 28px; 
+                box-sizing: border-box; 
+                transition: background-color 0.15s ease; 
+                white-space: nowrap; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                font-size: 0.8em;
+                user-select: none;
+            }
+            .cell:hover { background-color: #eef2f7; }
+            
+            /* Encabezados Superiores Sticky */
+            .header-cell { 
+                background-color: #0056b3; 
+                color: white; 
+                font-weight: bold; 
+                position: sticky; 
+                top: 0; 
+                z-index: 10; 
+            }
+
+            /* --- COLUMNA FIJA DE HABITACIONES (Sticky Left) --- */
             .room-header { 
-                background-color: #f9f9f9; 
-                color: #333; 
+                background-color: #f8f9fa !important; 
+                color: #2d3748; 
                 text-align: left; 
                 font-weight: 600; 
-                position: sticky; 
+                position: sticky !important; 
                 left: 0; 
-                z-index: 15; 
-                padding: 8px;
-                box-shadow: 2px 0 5px -1px rgba(0,0,0,0.15);
+                z-index: 20 !important; 
+                padding: 8px 12px;
+                box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12);
+                border-right: 2px solid #cbd5e0;
             }
-            .header-cell.room-header {
-                z-index: 25;
-                background-color: #004494;
-            }
-            .time-slot-sub-header { background-color: #0069d9; color: white; font-size: 0.7em; padding: 2px 0; border: 1px solid #e0e0e0; position: sticky; top: 29px; z-index: 10; }
 
-            .weekend-cell { background-color: #f0f0f0 !important; color: #555; }
+            /* Esquina Superior Izquierda (Header + Room Column overlap) */
+            .header-cell.room-header {
+                z-index: 30 !important;
+                background-color: #004494 !important;
+                color: white;
+            }
+
+            .time-slot-sub-header { 
+                background-color: #0069d9; 
+                color: white; 
+                font-size: 0.7em; 
+                padding: 3px 0; 
+                border: 1px solid #0056b3; 
+                position: sticky; 
+                top: 29px; 
+                z-index: 10; 
+            }
+
+            .weekend-cell { background-color: #f7fafc !important; color: #4a5568; }
             .weekend-header { background-color: #004494 !important; }
             .weekend-slot-header { background-color: #004494 !important; }
             
             /* Clases de estado de reserva */
-            .status-reserved { background-color: #ffeb3b; color: #333; }
-            .status-occupied { background-color: #4caf50; color: white; }
+            .status-reserved { background-color: #ffeb3b; color: #333; font-weight: 500; }
+            .status-occupied { background-color: #4caf50; color: white; font-weight: 500; }
             .status-checked-out { background-color: #9e9e9e; color: white; }
             .status-blocked { background-color: #f44336; color: white; }
             .status-liberated { background-color: white; }
@@ -50,49 +123,53 @@ class RoomPlanner extends HTMLElement {
             .today-column.header-cell { background-color: #1976d2 !important; }
             .today-column.time-slot-sub-header { background-color: #1976d2 !important; }
 
-            /* --- NUEVOS ESTILOS PARA EL ESTADO DE LIMPIEZA --- */
-            .clean-status-header.clean { border-left: 5px solid #4CAF50; }
-            .clean-status-header.dirty { border-left: 5px solid #F44336; }
-            .clean-status-header.servicing { border-left: 5px solid #FF9800; }
+            /* --- ESTADO DE LIMPIEZA --- */
+            .clean-status-header.clean { border-left: 6px solid #4CAF50; }
+            .clean-status-header.dirty { border-left: 6px solid #F44336; }
+            .clean-status-header.servicing { border-left: 6px solid #FF9800; }
 
             /* --- LEYENDA DE COLORES --- */
-            .legend { padding: 15px; background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0; display: flex; gap: 20px; flex-wrap: wrap; }
-            .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-            .legend-color { width: 20px; height: 20px; border: 1px solid #ccc; border-radius: 3px; }
+            .legend { padding: 12px 18px; background-color: #f8f9fa; border-bottom: 1px solid #e0e0e0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+            .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #495057; font-weight: 500; }
+            .legend-color { width: 18px; height: 18px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; }
 
-            .month-selector { padding: 10px; background-color: #e9e9e9; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-            .nav-button { background: #0056b3; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+            .month-selector { padding: 12px 18px; background-color: #ffffff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
+            .month-title { font-size: 1.1em; color: #1a202c; }
+            .nav-button { background: #0056b3; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 4px; font-weight: 600; transition: background 0.2s; }
             .nav-button:hover { background: #004494; }
             </style>
+
             <div class="month-selector">
-            <button class="nav-button" id="prevMonth">&lt; Anterior</button>
-            <span id="currentMonthDisplay">Mes Actual</span>
-            <button class="nav-button" id="nextMonth">Siguiente &gt;</button>
+                <button class="nav-button" id="prevMonth">&lt; Anterior</button>
+                <span id="currentMonthDisplay" class="month-title">Mes Actual</span>
+                <button class="nav-button" id="nextMonth">Siguiente &gt;</button>
             </div>
+
             <div class="legend">
-            <div class="legend-item">
-            <div class="legend-color" style="background-color: #ffeb3b;"></div>
-            <span>Reservado</span>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ffeb3b;"></div>
+                    <span>Reservado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #4caf50;"></div>
+                    <span>Ocupado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #9e9e9e;"></div>
+                    <span>Checkout Realizado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #f44336;"></div>
+                    <span>Bloqueado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e3f2fd;"></div>
+                    <span>Hoy</span>
+                </div>
             </div>
-            <div class="legend-item">
-            <div class="legend-color" style="background-color: #4caf50;"></div>
-            <span>Ocupado</span>
-            </div>
-            <div class="legend-item">
-            <div class="legend-color" style="background-color: #9e9e9e;"></div>
-            <span>Checkout Realizado</span>
-            </div>
-            <div class="legend-item">
-            <div class="legend-color" style="background-color: #f44336;"></div>
-            <span>Bloqueado</span>
-            </div>
-            <div class="legend-item">
-            <div class="legend-color" style="background-color: #e3f2fd;"></div>
-            <span>Hoy</span>
-            </div>
-            </div>
+
             <div class="planner-container">
-            <div class="planner-grid" id="plannerGrid"></div>
+                <div class="planner-grid" id="plannerGrid"></div>
             </div>
         `;
     }
@@ -354,105 +431,4 @@ class RoomPlanner extends HTMLElement {
                         const cellSelector = `[data-room-id="${roomId}"][data-day="${i}"][data-time-slot="${timeSlot}"]`;
                         const cell = grid.querySelector(cellSelector);
 
-                        if (cell && !renderedBookings.has(booking.id)) { // Render only once per booking
-                            const spanInSlots = this.getBookingSpanInSlots(booking, i, timeSlot);
-                            if (spanInSlots > 0) {
-                                cell.classList.remove('status-liberated');
-                                cell.classList.add(`status-${booking.status}`);
-                                // Check if the current day is a weekend for removing weekend-cell class from occupied cells
-                                const currentDateForCheck = new Date(this.currentYear, this.currentMonthIndex, i);
-                                if((currentDateForCheck.getDay() === 0 || currentDateForCheck.getDay() === 6) && booking.status !== 'liberated') { 
-                                    cell.classList.remove('weekend-cell'); 
-                                }
-                                cell.textContent = `${booking.client_name.split(' ')[0]} (${booking.time_slot.charAt(0).toUpperCase()})`;
-                                cell.dataset.bookingId = booking.id;
-                                cell.style.gridColumn = `span ${spanInSlots}`;
-                                cell.classList.add('booking-merged');
-                                renderedBookings.add(booking.id); // Mark as rendered
-
-                                // Remove covered cells from the DOM so grid columns stay perfectly aligned
-                                let removeDay = i;
-                                let removeSlot = timeSlot;
-                                for (let s = 1; s < spanInSlots; s++) {
-                                    if (removeSlot === 'morning') {
-                                        removeSlot = 'afternoon';
-                                    } else {
-                                        removeSlot = 'morning';
-                                        removeDay++;
-                                    }
-                                    const cellToRemove = grid.querySelector(`[data-room-id="${roomId}"][data-day="${removeDay}"][data-time-slot="${removeSlot}"]`);
-                                    if (cellToRemove) {
-                                        cellToRemove.remove();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    // Maneja todos los clics del grid a través de delegación
-    handleGridClick(event) {
-        let cell = event.target;
-        while (cell !== this.shadowRoot.getElementById('plannerGrid') && !cell.classList.contains('cell')) {
-            cell = cell.parentNode;
-        }
-
-        if (cell.classList.contains('cell') && !cell.classList.contains('header-cell')) {
-            this.handleCellClickLogic(cell);
-        }
-    }
-   
-    // Lógica de click separada que EMITE UN EVENTO
-    handleCellClickLogic(cell) {
-        const day = cell.dataset.day;
-        const timeSlot = cell.dataset.timeSlot; // Get the time slot from the clicked cell
-        const clickedDate = new Date(Date.UTC(this.currentYear, this.currentMonthIndex, day));
-        const formattedDate = clickedDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-        const roomId = parseInt(cell.dataset.roomId);
-        const roomDetails = this.rooms.find(r => r.id === roomId);
-
-        // Find existing booking that starts *at or before* this specific slot, and covers it.
-        const existingBooking = this.findBookingForSlot(roomId, formattedDate, timeSlot);
-
-        const eventDetail = {
-            roomId: roomId,
-            roomName: roomDetails ? roomDetails.name : `Habitación ${roomId}`,
-            roomPrice: roomDetails ? roomDetails.price : 0,
-            
-            // Usamos los datos de la reserva existente o valores por defecto para NUEVA RESERVA
-            startDate: existingBooking ? existingBooking.start_date : formattedDate,
-            timeSlot: existingBooking ? existingBooking.time_slot : timeSlot, 
-            endDate: existingBooking ? existingBooking.end_date : '', 
-            clientName: existingBooking ? existingBooking.client_name : '',
-            status: existingBooking ? existingBooking.status : 'reserved', // Nueva reserva por defecto es 'reserved'
-            pricePerNight: existingBooking ? existingBooking.price_per_night : roomDetails.price,
-
-            bookingId: existingBooking ? existingBooking.id : null, // null para nueva reserva
-            notes: existingBooking ? existingBooking.notes : '', // Notas de la reserva existente o vacío
-            clientEmail: existingBooking ? existingBooking.email : '', // Pass email if exists
-            clientId: existingBooking ? existingBooking.client_id : null // Pass client ID for company dropdown
-        };
-
-        document.dispatchEvent(new CustomEvent('open-booking-modal', {
-            detail: eventDetail
-        }));
-    }
-
-    handleRoomHeaderClick(event) {
-        const cell = event.target;
-        if (cell.classList.contains('room-header') && cell.dataset.roomId) { // Ensure it's a room header and has an ID
-            const roomId = parseInt(cell.dataset.roomId);
-            const roomDetails = this.rooms.find(r => r.id === roomId);
-            
-            if (roomDetails) {
-                document.dispatchEvent(new CustomEvent('open-room-details-modal', {
-                    detail: roomDetails
-                }));
-            }
-        }
-    }
-} 
-customElements.define('room-planner', RoomPlanner);
+                        if (cell && !renderedBookings.has(booking.id)) { // Render
