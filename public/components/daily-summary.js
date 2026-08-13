@@ -395,8 +395,8 @@ class DailySummary extends HTMLElement {
         const checkIns = [];
         const seenCheckIns = new Set();
         bookings.filter(b => b.start_date === todayISO && b.status === 'reserved').forEach(b => {
-            if (!seenCheckIns.has(b.id)) {
-                seenCheckIns.add(b.id);
+            if (!seenCheckIns.has(b.room_id)) {
+                seenCheckIns.add(b.room_id);
                 checkIns.push(b);
             }
         });
@@ -404,8 +404,8 @@ class DailySummary extends HTMLElement {
         const checkOuts = [];
         const seenCheckOuts = new Set();
         bookings.filter(b => b.end_date === todayISO && b.status !== 'checked-out').forEach(b => {
-            if (!seenCheckOuts.has(b.id)) {
-                seenCheckOuts.add(b.id);
+            if (!seenCheckOuts.has(b.room_id)) {
+                seenCheckOuts.add(b.room_id);
                 checkOuts.push(b);
             }
         });
