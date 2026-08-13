@@ -335,7 +335,7 @@ class DailySummary extends HTMLElement {
             const employeesData = await employeesRes.json();
 
             this.calculateAndRenderKPIs(roomsData.data, bookingsData.data, todayISO);
-            this.renderBookingsLists(bookingsData.data, todayISO);
+            this.renderBookingsLists(bookingsData.data, roomsData.data, todayISO);
             this.renderHousekeepingList(roomsData.data);
             this.renderShiftsList(shiftsData.data, employeesData.data, todayISO);
 
@@ -382,24 +382,43 @@ class DailySummary extends HTMLElement {
         }
     }
 
-    renderBookingsLists(bookings, todayISO) {
+    renderBookingsLists(bookings, rooms, todayISO) {
         const checkInsList = this.shadowRoot.getElementById('checkInsList');
         const checkOutsList = this.shadowRoot.getElementById('checkOutsList');
         
         checkInsList.innerHTML = '';
         checkOutsList.innerHTML = '';
 
-        const checkIns = bookings.filter(b => b.start_date === todayISO && b.status === 'reserved');
-        const checkOuts = bookings.filter(b => b.end_date === todayISO && b.status !== 'checked-out');
+        const roomMap = new Map(rooms.map(r => [r.id, r.name]));
+
+        // Filtrar y eliminar duplicados por ID de reserva
+        const checkIns = [];
+        const seenCheckIns = new Set();
+        bookings.filter(b => b.start_date === todayISO && b.status === 'reserved').forEach(b => {
+            if (!seenCheckIns.has(b.id)) {
+                seenCheckIns.add(b.id);
+                checkIns.push(b);
+            }
+        });
+
+        const checkOuts = [];
+        const seenCheckOuts = new Set();
+        bookings.filter(b => b.end_date === todayISO && b.status !== 'checked-out').forEach(b => {
+            if (!seenCheckOuts.has(b.id)) {
+                seenCheckOuts.add(b.id);
+                checkOuts.push(b);
+            }
+        });
         
         if (checkIns.length > 0) {
             checkIns.forEach(booking => {
+                const roomName = roomMap.get(booking.room_id) || `ID: ${booking.room_id}`;
                 const li = document.createElement('li');
                 li.className = 'activity-item';
                 li.innerHTML = `
                     <div class="activity-info">
                         <span class="activity-main">${booking.client_name}</span>
-                        <span class="activity-sub">Habitación ID: ${booking.room_id}</span>
+                        <span class="activity-sub">Habitación: ${roomName}</span>
                     </div>
                     <span class="badge badge-blue">Pendiente</span>
                 `;
@@ -418,12 +437,13 @@ class DailySummary extends HTMLElement {
 
         if (checkOuts.length > 0) {
             checkOuts.forEach(booking => {
+                const roomName = roomMap.get(booking.room_id) || `ID: ${booking.room_id}`;
                 const li = document.createElement('li');
                 li.className = 'activity-item';
                 li.innerHTML = `
                     <div class="activity-info">
                         <span class="activity-main">${booking.client_name}</span>
-                        <span class="activity-sub">Habitación ID: ${booking.room_id}</span>
+                        <span class="activity-sub">Habitación: ${roomName}</span>
                     </div>
                     <span class="badge badge-amber">Por Salir</span>
                 `;
@@ -487,18 +507,28 @@ class DailySummary extends HTMLElement {
         const employeeMap = new Map(employees.map(emp => [emp.id, emp.name]));
         const todayShifts = shifts.filter(s => s.shift_date === todayISO);
 
-        if (todayShifts.length > 0) {
-            todayShifts.forEach(shift => {
+        // Agrupar turnos por empleado para evitar duplicados
+        const shiftsByEmployee = new Map();
+        todayShifts.forEach(shift => {
+            if (!shiftsByEmployee.has(shift.employee_id)) {
+                shiftsByEmployee.set(shift.employee_id, []);
+            }
+            shiftsByEmployee.get(shift.employee_id).push(shift.shift_type);
+        });
+
+        if (shiftsByEmployee.size > 0) {
+            shiftsByEmployee.forEach((shiftTypes, employeeId) => {
                 const li = document.createElement('li');
                 li.className = 'activity-item';
-                const employeeName = employeeMap.get(shift.employee_id) || 'Empleado Desconocido';
+                const employeeName = employeeMap.get(employeeId) || 'Empleado Desconocido';
+                const uniqueShiftTypes = [...new Set(shiftTypes)].join(', ');
                 
                 li.innerHTML = `
                     <div class="activity-info">
                         <span class="activity-main">${employeeName}</span>
-                        <span class="activity-sub">Fecha: ${shift.shift_date}</span>
+                        <span class="activity-sub">Fecha: ${todayISO}</span>
                     </div>
-                    <span class="badge badge-emerald">Turno ${shift.shift_type}</span>
+                    <span class="badge badge-emerald">Turno: ${uniqueShiftTypes}</span>
                 `;
                 list.appendChild(li);
             });
