@@ -170,6 +170,11 @@ class UserList extends HTMLElement {
                     color: #15803d;
                 }
 
+                .badge-limpieza {
+                    background-color: #fefce8;
+                    color: #a16207;
+                }
+
                 .badge-operador {
                     background-color: #f8fafc;
                     color: #475569;

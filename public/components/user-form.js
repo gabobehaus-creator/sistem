@@ -222,6 +222,7 @@ class UserForm extends HTMLElement {
                     <select id="role">
                         <option value="operador" ${isEditing && this.user.role === 'operador' ? 'selected' : ''}>Operador</option>
                         <option value="supervisor" ${isEditing && this.user.role === 'supervisor' ? 'selected' : ''}>Supervisor</option>
+                        <option value="limpieza" ${isEditing && this.user.role === 'limpieza' ? 'selected' : ''}>Limpieza</option>
                         <option value="admin" ${isEditing && this.user.role === 'admin' ? 'selected' : ''}>Administrador</option>
                     </select>
                 </div>
