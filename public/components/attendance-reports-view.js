@@ -4,10 +4,11 @@ class AttendanceReportsView extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.records = [];
         this.users = [];
-        this.activeTab = 'dashboard'; // 'dashboard', 'jornadas', 'historial'
+        this.activeTab = 'dashboard'; // 'dashboard', 'jornadas', 'monthly', 'historial'
         
         // Search filters
         this.searchTermJornadas = '';
+        this.searchTermMonthly = '';
         this.searchTermHistorial = '';
 
         // Pagination for Historial
@@ -17,6 +18,10 @@ class AttendanceReportsView extends HTMLElement {
         // Pagination for Jornadas
         this.currentPageJornadas = 1;
         this.itemsPerPageJornadas = 15;
+
+        // Pagination for Monthly
+        this.currentPageMonthly = 1;
+        this.itemsPerPageMonthly = 15;
     }
 
     connectedCallback() {
@@ -60,6 +65,7 @@ class AttendanceReportsView extends HTMLElement {
                 this.records = result.data || [];
                 this.currentPageHistorial = 1;
                 this.currentPageJornadas = 1;
+                this.currentPageMonthly = 1;
                 this.updateDashboardAndTables();
             } else {
                 console.error("Error al obtener el reporte");
@@ -188,8 +194,37 @@ class AttendanceReportsView extends HTMLElement {
         });
     }
 
+    // Consolidate monthly user hours
+    calculateMonthlySummary(shifts) {
+        const userSummaryMap = {};
+
+        shifts.forEach(shift => {
+            const uid = shift.user_id;
+            if (!userSummaryMap[uid]) {
+                userSummaryMap[uid] = {
+                    user: shift.user,
+                    totalHours: 0,
+                    totalShifts: 0,
+                    completedShifts: 0,
+                    incompleteShifts: 0
+                };
+            }
+
+            userSummaryMap[uid].totalShifts += 1;
+            userSummaryMap[uid].totalHours += shift.hours;
+            if (shift.status === 'completed') {
+                userSummaryMap[uid].completedShifts += 1;
+            } else {
+                userSummaryMap[uid].incompleteShifts += 1;
+            }
+        });
+
+        return Object.values(userSummaryMap).sort((a, b) => b.totalHours - a.totalHours);
+    }
+
     updateDashboardAndTables() {
         const shifts = this.calculateShifts();
+        const monthlySummaries = this.calculateMonthlySummary(shifts);
         
         // 1. Calculate Metrics
         const activeUsersMap = {};
@@ -265,6 +300,7 @@ class AttendanceReportsView extends HTMLElement {
 
         // 2. Render Tables
         this.renderJornadasTable(shifts);
+        this.renderMonthlyTable(monthlySummaries);
         this.renderHistorialTable();
     }
 
@@ -362,6 +398,61 @@ class AttendanceReportsView extends HTMLElement {
         this.renderJornadasPagination(totalPages);
     }
 
+    renderMonthlyTable(monthlySummaries) {
+        const tbody = this.shadowRoot.getElementById('monthlyBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const filtered = monthlySummaries.filter(summary => {
+            const term = this.searchTermMonthly.toLowerCase();
+            return summary.user.username.toLowerCase().includes(term) || (summary.user.role && summary.user.role.toLowerCase().includes(term));
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 32px; color: #64748b;">No hay datos de resumen mensual acumulado para mostrar.</td></tr>';
+            this.renderMonthlyPagination(0);
+            return;
+        }
+
+        const totalPages = Math.ceil(filtered.length / this.itemsPerPageMonthly);
+        if (this.currentPageMonthly > totalPages) this.currentPageMonthly = totalPages;
+        if (this.currentPageMonthly < 1) this.currentPageMonthly = 1;
+
+        const start = (this.currentPageMonthly - 1) * this.itemsPerPageMonthly;
+        const end = start + this.itemsPerPageMonthly;
+        const pageItems = filtered.slice(start, end);
+
+        pageItems.forEach(item => {
+            const tr = document.createElement('tr');
+            const avgHours = item.completedShifts > 0 ? (item.totalHours / item.completedShifts).toFixed(1) : '0.0';
+
+            tr.innerHTML = `
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="avatar" style="width:32px; height:32px; font-size:12px;">${item.user.username.charAt(0).toUpperCase()}</div>
+                        <div>
+                            <strong>${item.user.username}</strong>
+                            <div style="font-size: 11px; color: #64748b;">ID: #${item.user.id || '-'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="role-tag">${item.user.role || 'Sin Rol'}</span></td>
+                <td>${item.totalShifts} jornadas</td>
+                <td>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size: 12px; color: #16a34a; font-weight:600;">✓ ${item.completedShifts} completas</span>
+                        ${item.incompleteShifts > 0 ? `<span style="font-size: 11px; color: #d97706;">⚠️ ${item.incompleteShifts} pendientes</span>` : ''}
+                    </div>
+                </td>
+                <td><span style="font-size: 13px; color: #475569;">~${avgHours} hrs/día</span></td>
+                <td><span class="highlight-hours">${item.totalHours.toFixed(2)} hrs</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        this.renderMonthlyPagination(totalPages);
+    }
+
     renderHistorialTable() {
         const tbody = this.shadowRoot.getElementById('recordsBody');
         tbody.innerHTML = '';
@@ -434,6 +525,25 @@ class AttendanceReportsView extends HTMLElement {
         pageInfo.textContent = `Página ${this.currentPageJornadas} de ${totalPages}`;
         prevBtn.disabled = this.currentPageJornadas <= 1;
         nextBtn.disabled = this.currentPageJornadas >= totalPages;
+    }
+
+    renderMonthlyPagination(totalPages) {
+        const prevBtn = this.shadowRoot.getElementById('prevMonthlyBtn');
+        const nextBtn = this.shadowRoot.getElementById('nextMonthlyBtn');
+        const pageInfo = this.shadowRoot.getElementById('monthlyPageInfo');
+
+        if (!prevBtn || !nextBtn || !pageInfo) return;
+
+        if (totalPages === 0) {
+            pageInfo.textContent = 'Página 0 de 0';
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+
+        pageInfo.textContent = `Página ${this.currentPageMonthly} de ${totalPages}`;
+        prevBtn.disabled = this.currentPageMonthly <= 1;
+        nextBtn.disabled = this.currentPageMonthly >= totalPages;
     }
 
     renderHistorialPagination(totalPages) {
@@ -765,7 +875,7 @@ class AttendanceReportsView extends HTMLElement {
                     transform: translateY(-1px);
                     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                 }
-                .active-member-card .avatar {
+                .avatar {
                     width: 36px;
                     height: 36px;
                     border-radius: 50%;
@@ -939,6 +1049,16 @@ class AttendanceReportsView extends HTMLElement {
                     color: #b91c1c;
                 }
 
+                .highlight-hours {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #2563eb;
+                    background: #eff6ff;
+                    padding: 4px 10px;
+                    border-radius: 8px;
+                    display: inline-block;
+                }
+
                 .shift-times {
                     display: flex;
                     flex-direction: column;
@@ -1067,6 +1187,12 @@ class AttendanceReportsView extends HTMLElement {
                         border: 1px solid #ef4444 !important;
                         color: #b91c1c !important;
                     }
+                    .highlight-hours {
+                        background: transparent !important;
+                        color: #000 !important;
+                        padding: 0 !important;
+                        font-weight: bold !important;
+                    }
                 }
             </style>
 
@@ -1122,6 +1248,7 @@ class AttendanceReportsView extends HTMLElement {
             <div class="tabs-nav">
                 <button class="tab-btn active" data-tab="dashboard">Vista General (Dashboard)</button>
                 <button class="tab-btn" data-tab="jornadas">Jornadas y Horas Trabajadas</button>
+                <button class="tab-btn" data-tab="monthly">Resumen Mensual por Empleado</button>
                 <button class="tab-btn" data-tab="historial">Historial de Fichajes</button>
             </div>
 
@@ -1191,7 +1318,35 @@ class AttendanceReportsView extends HTMLElement {
                 </div>
             </div>
 
-            <!-- TAB 3: HISTORIAL DE FICHAJES -->
+            <!-- TAB 3: RESUMEN MENSUAL POR EMPLEADO -->
+            <div id="monthlyTabContent" class="tab-content">
+                <div class="search-container">
+                    <input type="text" id="searchMonthly" class="search-input" placeholder="Buscar por empleado o rol...">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Rol / Área</th>
+                            <th>Jornadas Totales</th>
+                            <th>Estado de Fichajes</th>
+                            <th>Promedio Diario</th>
+                            <th>Total Horas Acumuladas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyBody">
+                        <tr><td colspan="6" style="text-align:center;">Cargando resumen mensual...</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="pagination">
+                    <button id="prevMonthlyBtn">Anterior</button>
+                    <span id="monthlyPageInfo">Página 1 de 1</span>
+                    <button id="nextMonthlyBtn">Siguiente</button>
+                </div>
+            </div>
+
+            <!-- TAB 4: HISTORIAL DE FICHAJES -->
             <div id="historialTabContent" class="tab-content">
                 <div class="search-container">
                     <input type="text" id="searchHistorial" class="search-input" placeholder="Buscar por empleado o rol...">
@@ -1230,6 +1385,11 @@ class AttendanceReportsView extends HTMLElement {
             this.currentPageJornadas = 1;
             this.updateDashboardAndTables();
         });
+        this.shadowRoot.getElementById('searchMonthly').addEventListener('input', (e) => {
+            this.searchTermMonthly = e.target.value;
+            this.currentPageMonthly = 1;
+            this.updateDashboardAndTables();
+        });
         this.shadowRoot.getElementById('searchHistorial').addEventListener('input', (e) => {
             this.searchTermHistorial = e.target.value;
             this.currentPageHistorial = 1;
@@ -1253,6 +1413,23 @@ class AttendanceReportsView extends HTMLElement {
             const totalPages = Math.ceil(shifts.length / this.itemsPerPageJornadas);
             if (this.currentPageJornadas < totalPages) {
                 this.currentPageJornadas++;
+                this.updateDashboardAndTables();
+            }
+        });
+
+        // Pagination: Monthly
+        this.shadowRoot.getElementById('prevMonthlyBtn').addEventListener('click', () => {
+            if (this.currentPageMonthly > 1) {
+                this.currentPageMonthly--;
+                this.updateDashboardAndTables();
+            }
+        });
+        this.shadowRoot.getElementById('nextMonthlyBtn').addEventListener('click', () => {
+            const shifts = this.calculateShifts();
+            const monthlySummaries = this.calculateMonthlySummary(shifts);
+            const totalPages = Math.ceil(monthlySummaries.length / this.itemsPerPageMonthly);
+            if (this.currentPageMonthly < totalPages) {
+                this.currentPageMonthly++;
                 this.updateDashboardAndTables();
             }
         });
